@@ -8,7 +8,22 @@
   <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
-  <div class="shell">
+  <section id="login-screen" class="login-screen">
+    <form id="login-form" class="login-card">
+      <div class="brand-mark login-mark">ش</div>
+      <p class="eyebrow">لوحة الإدارة</p>
+      <h1>تسجيل الدخول</h1>
+      <p class="login-description">الدخول مخصص لحساب المدير المعتمد فقط.</p>
+      <label for="login-email">البريد الإلكتروني</label>
+      <input id="login-email" type="email" autocomplete="username" required>
+      <label for="login-password">كلمة المرور</label>
+      <input id="login-password" type="password" autocomplete="current-password" required>
+      <button id="login-button" class="primary-button" type="submit">دخول آمن</button>
+      <p id="login-message" class="form-message" role="status"></p>
+    </form>
+  </section>
+
+  <div id="dashboard-shell" class="shell hidden">
     <aside class="sidebar">
       <div class="brand">
         <div class="brand-mark">ش</div>
@@ -20,7 +35,7 @@
       <button class="nav-item" data-page="commission"><span>◈</span> العمولة</button>
       <div class="sidebar-bottom">
         <div class="status-dot"></div>
-        <div><strong>نسخة أولية</strong><small>غير متصلة بقاعدة البيانات بعد</small></div>
+        <div><strong>اتصال آمن</strong><small>يتم التحقق من صلاحية المدير</small></div>
       </div>
     </aside>
 
@@ -30,47 +45,53 @@
           <div class="eyebrow">مساحة الإدارة</div>
           <h1 id="page-title">نظرة عامة</h1>
         </div>
-        <div class="admin-pill"><span class="avatar">م</span><span>المدير</span><span class="chevron">⌄</span></div>
+        <div class="admin-actions">
+          <div class="admin-pill"><span class="avatar">م</span><span id="admin-email">المدير</span></div>
+          <button id="logout-button" class="secondary-button" type="button">تسجيل الخروج</button>
+        </div>
       </header>
 
       <section class="notice">
         <span class="notice-icon">i</span>
-        <div><strong>هذه واجهة تصميم أولية</strong><p>لم يتم ربطها بقاعدة البيانات بعد. لن تُحفظ أي إعدادات الآن؛ سنضيف تسجيل الدخول والاتصال الآمن قبل استخدامها فعلياً.</p></div>
+        <div><strong>تغيير آمن للإعدادات</strong><p>يتم التحقق من حساب المدير على الخادم قبل قراءة الإعدادات أو حفظها. مفتاح قاعدة البيانات السري لا يُرسل إلى المتصفح.</p></div>
       </section>
 
       <section id="overview-page" class="page">
         <div class="welcome">
-          <div><p class="eyebrow light">أهلاً بك</p><h2>إدارة «شو بدك» من مكان واحد</h2><p>لوحة بسيطة للتحكم بإعدادات التطبيق ومتابعة أهم الأرقام.</p></div>
+          <div><p class="eyebrow light">أهلاً بك</p><h2>إدارة «شو بدك» من مكان واحد</h2><p>يمكنك تعديل العمولة من قسم العمولة بعد التأكد من اتصال قاعدة البيانات.</p></div>
           <div class="welcome-symbol">ش</div>
         </div>
-        <div class="section-heading"><div><h2>ملخص الإدارة</h2><p>ستظهر الأرقام هنا بعد ربط اللوحة بقاعدة البيانات.</p></div></div>
-        <div class="stats">
-          <article class="stat-card"><div class="stat-top"><span>إجمالي المستخدمين</span><span class="stat-icon">♙</span></div><strong>—</strong><small>بانتظار ربط البيانات</small></article>
-          <article class="stat-card"><div class="stat-top"><span>الطلبات</span><span class="stat-icon">▤</span></div><strong>—</strong><small>بانتظار ربط البيانات</small></article>
-          <article class="stat-card"><div class="stat-top"><span>العمولات</span><span class="stat-icon">◈</span></div><strong>—</strong><small>بانتظار ربط البيانات</small></article>
-        </div>
-        <div class="panel next-panel"><div class="panel-icon">✓</div><div><h3>الخطوة التالية</h3><p>تأمين دخول المدير، ثم إنشاء إعداد العمولة في Supabase وربطه بهذه الواجهة.</p></div></div>
+        <div class="section-heading"><div><h2>ملخص الإدارة</h2><p>سنضيف أرقام المستخدمين والطلبات لاحقاً بعد مراجعة صلاحيات الوصول.</p></div></div>
+        <div class="panel next-panel"><div class="panel-icon">✓</div><div><h3>الحماية أولاً</h3><p>لا يمكن تعديل إعدادات التطبيق إلا من خلال جلسة مدير معتمدة.</p></div></div>
       </section>
 
       <section id="settings-page" class="page hidden">
-        <div class="section-heading"><div><h2>إعدادات التطبيق</h2><p>سنضيف الإعدادات القابلة للتغيير هنا تدريجياً.</p></div></div>
-        <div class="panel"><h3>الإعدادات العامة</h3><p class="muted">هذه الصفحة للتصميم فقط حالياً. لن يتم حفظ أي تغيير قبل تفعيل الربط الآمن.</p></div>
+        <div class="section-heading"><div><h2>إعدادات التطبيق</h2><p>سنضيف الإعدادات القابلة للتغيير تدريجياً بعد التحقق من أثر كل إعداد.</p></div></div>
+        <div class="panel"><h3>الإعدادات العامة</h3><p class="muted">لم نفعّل تعديل الإعدادات الأخرى بعد، لتجنب تغيير سلوك التطبيق بالخطأ.</p></div>
       </section>
 
       <section id="commission-page" class="page hidden">
-        <div class="section-heading"><div><h2>العمولة</h2><p>تحديد عمولة التطبيق للخدمات الجديدة.</p></div></div>
+        <div class="section-heading"><div><h2>العمولة</h2><p>تحديد عمولة ثابتة للاتفاقات الجديدة فقط.</p></div></div>
         <div class="panel commission-panel">
-          <div class="field-heading"><div><label for="commission">العمولة الافتراضية لكل خدمة</label><p class="muted">القيمة المبدئية المقترحة، ويمكن تغييرها لاحقاً.</p></div><span class="unit">ليرة سورية جديدة</span></div>
-          <div class="input-row"><input id="commission" type="number" min="0" step="1" value="50" disabled><span>ل.س جديدة</span></div>
-          <p class="helper">الحفظ غير مفعّل بعد. سنفعّله بعد ربط قاعدة البيانات والتحقق من الصلاحيات.</p>
-          <button class="primary-button" disabled>حفظ التغييرات — قريباً</button>
+          <div class="field-heading"><div><label for="commission">العمولة لكل خدمة</label><p class="muted">سيتم ضبط الحد الأدنى والأعلى والقيمة الافتراضية على الرقم نفسه.</p></div><span class="unit">ليرة سورية جديدة</span></div>
+          <div class="input-row"><input id="commission" type="number" min="50" max="1000" step="1" value="50" inputmode="numeric"><span>ل.س جديدة</span></div>
+          <p id="commission-status" class="helper" role="status">جارٍ تحميل القيمة المحفوظة…</p>
+          <button id="save-commission" class="primary-button" type="button">حفظ العمولة</button>
         </div>
-        <div class="panel note-panel"><strong>مهم</strong><p>عند تفعيل الإعداد، سنحدد أن التغييرات الجديدة لا تعدّل عمولات أو اتفاقات قديمة بأثر رجعي.</p></div>
+        <div class="panel note-panel"><strong>تنبيه</strong><p>الحد المسموح حالياً من 50 إلى 1000 ليرة سورية جديدة. التغيير يخص الاتفاقات الجديدة؛ الاتفاقات السابقة تحتفظ بالعمولة المحفوظة فيها.</p></div>
       </section>
 
       <footer>شو بدك © <span id="year"></span> <span>لوحة إدارة مستقلة</span></footer>
     </main>
   </div>
+
+  <script>
+    window.SHO_BDK_CONFIG = {
+      supabaseUrl: "https://cmflpnweojteblxrpzgq.supabase.co",
+      supabaseKey: "sb_publishable_qQmUrRVI_Uf18Nr4ayC2jA_2SSsLBbp"
+    };
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.0/dist/umd/supabase.js"></script>
   <script src="./app.js"></script>
 </body>
 </html>
