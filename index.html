@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#111827">
+  <title>لوحة تحكم شو بدك</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <div class="shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">ش</div>
+        <div><strong>شو بدك</strong><small>لوحة الإدارة</small></div>
+      </div>
+      <div class="side-label">القائمة الرئيسية</div>
+      <button class="nav-item active" data-page="overview"><span>▦</span> نظرة عامة</button>
+      <button class="nav-item" data-page="settings"><span>⚙</span> إعدادات التطبيق</button>
+      <button class="nav-item" data-page="commission"><span>◈</span> العمولة</button>
+      <div class="sidebar-bottom">
+        <div class="status-dot"></div>
+        <div><strong>نسخة أولية</strong><small>غير متصلة بقاعدة البيانات بعد</small></div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <div class="eyebrow">مساحة الإدارة</div>
+          <h1 id="page-title">نظرة عامة</h1>
+        </div>
+        <div class="admin-pill"><span class="avatar">م</span><span>المدير</span><span class="chevron">⌄</span></div>
+      </header>
+
+      <section class="notice">
+        <span class="notice-icon">i</span>
+        <div><strong>هذه واجهة تصميم أولية</strong><p>لم يتم ربطها بقاعدة البيانات بعد. لن تُحفظ أي إعدادات الآن؛ سنضيف تسجيل الدخول والاتصال الآمن قبل استخدامها فعلياً.</p></div>
+      </section>
+
+      <section id="overview-page" class="page">
+        <div class="welcome">
+          <div><p class="eyebrow light">أهلاً بك</p><h2>إدارة «شو بدك» من مكان واحد</h2><p>لوحة بسيطة للتحكم بإعدادات التطبيق ومتابعة أهم الأرقام.</p></div>
+          <div class="welcome-symbol">ش</div>
+        </div>
+        <div class="section-heading"><div><h2>ملخص الإدارة</h2><p>ستظهر الأرقام هنا بعد ربط اللوحة بقاعدة البيانات.</p></div></div>
+        <div class="stats">
+          <article class="stat-card"><div class="stat-top"><span>إجمالي المستخدمين</span><span class="stat-icon">♙</span></div><strong>—</strong><small>بانتظار ربط البيانات</small></article>
+          <article class="stat-card"><div class="stat-top"><span>الطلبات</span><span class="stat-icon">▤</span></div><strong>—</strong><small>بانتظار ربط البيانات</small></article>
+          <article class="stat-card"><div class="stat-top"><span>العمولات</span><span class="stat-icon">◈</span></div><strong>—</strong><small>بانتظار ربط البيانات</small></article>
+        </div>
+        <div class="panel next-panel"><div class="panel-icon">✓</div><div><h3>الخطوة التالية</h3><p>تأمين دخول المدير، ثم إنشاء إعداد العمولة في Supabase وربطه بهذه الواجهة.</p></div></div>
+      </section>
+
+      <section id="settings-page" class="page hidden">
+        <div class="section-heading"><div><h2>إعدادات التطبيق</h2><p>سنضيف الإعدادات القابلة للتغيير هنا تدريجياً.</p></div></div>
+        <div class="panel"><h3>الإعدادات العامة</h3><p class="muted">هذه الصفحة للتصميم فقط حالياً. لن يتم حفظ أي تغيير قبل تفعيل الربط الآمن.</p></div>
+      </section>
+
+      <section id="commission-page" class="page hidden">
+        <div class="section-heading"><div><h2>العمولة</h2><p>تحديد عمولة التطبيق للخدمات الجديدة.</p></div></div>
+        <div class="panel commission-panel">
+          <div class="field-heading"><div><label for="commission">العمولة الافتراضية لكل خدمة</label><p class="muted">القيمة المبدئية المقترحة، ويمكن تغييرها لاحقاً.</p></div><span class="unit">ليرة سورية جديدة</span></div>
+          <div class="input-row"><input id="commission" type="number" min="0" step="1" value="50" disabled><span>ل.س جديدة</span></div>
+          <p class="helper">الحفظ غير مفعّل بعد. سنفعّله بعد ربط قاعدة البيانات والتحقق من الصلاحيات.</p>
+          <button class="primary-button" disabled>حفظ التغييرات — قريباً</button>
+        </div>
+        <div class="panel note-panel"><strong>مهم</strong><p>عند تفعيل الإعداد، سنحدد أن التغييرات الجديدة لا تعدّل عمولات أو اتفاقات قديمة بأثر رجعي.</p></div>
+      </section>
+
+      <footer>شو بدك © <span id="year"></span> <span>لوحة إدارة مستقلة</span></footer>
+    </main>
+  </div>
+  <script src="./app.js"></script>
+</body>
+</html>
