@@ -7,6 +7,7 @@ const pages = {
 const loginScreen = document.getElementById("login-screen");
 const loginForm = document.getElementById("login-form");
 const loginButton = document.getElementById("login-button");
+const googleLoginButton = document.getElementById("google-login-button");
 const loginMessage = document.getElementById("login-message");
 const dashboardShell = document.getElementById("dashboard-shell");
 const commissionInput = document.getElementById("commission");
@@ -77,6 +78,28 @@ async function enterDashboard(session) {
     return false;
   }
 }
+
+googleLoginButton.addEventListener("click", async () => {
+  if (!supabaseClient) {
+    setLoginMessage("تعذّر تحميل مكتبة تسجيل الدخول. حدّث الصفحة وحاول مجدداً.");
+    return;
+  }
+
+  googleLoginButton.disabled = true;
+  googleLoginButton.textContent = "جارٍ التحويل إلى Google…";
+  setLoginMessage("");
+
+  const { error } = await supabaseClient.auth.signInWithOAuth({
+    provider: "google",
+    options: { redirectTo: window.location.origin }
+  });
+
+  if (error) {
+    setLoginMessage("تعذّر بدء تسجيل الدخول عبر Google. تأكد من تفعيل Google في إعدادات Supabase Auth.");
+    googleLoginButton.disabled = false;
+    googleLoginButton.textContent = "المتابعة باستخدام Google";
+  }
+});
 
 loginForm.addEventListener("submit", async (event) => {
   event.preventDefault();

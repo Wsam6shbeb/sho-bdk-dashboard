@@ -17,6 +17,13 @@
 
 بعد حفظ المتغيرات، أعد نشر آخر نسخة من Cloudflare Pages حتى تعمل دالة `/api/settings`.
 
+## تسجيل الدخول عبر Google
+
+- فعّل مزوّد Google من Supabase → Authentication → Sign In / Providers، وأدخل إعدادات OAuth المطلوبة من Google Cloud.
+- في Supabase → Authentication → URL Configuration، أضف عنوان لوحة التحكم إلى Redirect URLs:
+  - `https://sho-bdk-dashboard.pages.dev/`
+- زر Google يعيد المستخدم إلى لوحة التحكم، ثم يتحقق الخادم من أن البريد يطابق `ADMIN_EMAIL`. لا يمنح مجرد تسجيل الدخول عبر Google صلاحية المدير.
+
 ## 2. اختبر من دون تغيير العمولة
 
 1. افتح رابط Preview للفرع أو رابط الموقع بعد النشر.
