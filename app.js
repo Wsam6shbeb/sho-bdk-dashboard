@@ -382,7 +382,6 @@ usersSearch.addEventListener("input", renderUsers);
 usersFilter.addEventListener("change", renderUsers);
 document.getElementById("refresh-users").addEventListener("click", () => loadUsers(true));
 
-googleLoginButton.addEventListener("click", async () => {
   const settingInfoModal = document.getElementById("setting-info-modal");
 const settingInfoTitle = document.getElementById("setting-info-title");
 const settingInfoDescription = document.getElementById("setting-info-description");
@@ -411,7 +410,8 @@ document.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && !settingInfoModal.classList.contains("hidden")) closeSettingInfo();
 });
 
-if (!supabaseClient) {
+googleLoginButton.addEventListener("click", async () => {
+  if (!supabaseClient) {
     setLoginMessage("تعذّر تحميل مكتبة تسجيل الدخول. حدّث الصفحة وحاول مجدداً.");
     return;
   }
