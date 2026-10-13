@@ -1,5 +1,4 @@
 const pages = {
-  overview: { title: "نظرة عامة", id: "overview-page" },
   users: { title: "إدارة المستخدمين", id: "users-page" },
   settings: { title: "إعدادات التطبيق", id: "settings-page" },
   support: { title: "طريقة الدعم", id: "support-page" },
@@ -38,6 +37,11 @@ const supabaseClient = window.supabase?.createClient(
 );
 
 document.getElementById("year").textContent = new Date().getFullYear();
+
+// Remove the unused landing overview and open user management after admin login.
+document.querySelector("[data-page=\"overview\"]")?.remove();
+document.getElementById("overview-page")?.remove();
+document.getElementById("page-title").textContent = pages.users.title;
 
 document.querySelectorAll(".nav-item").forEach((button) => {
   button.addEventListener("click", () => {
@@ -123,6 +127,7 @@ async function enterDashboard(session) {
     loginScreen.classList.add("hidden");
     dashboardShell.classList.remove("hidden");
     document.getElementById("admin-email").textContent = session.user.email;
+    document.querySelector("[data-page=\"users\"]").click();
     commissionInput.value = String(settings.commission);
     commissionStatus.textContent = settings.isFlat
       ? "تم تحميل العمولة المحفوظة من قاعدة البيانات."
@@ -152,6 +157,7 @@ async function enterDashboard(session) {
       loginScreen.classList.add("hidden");
       dashboardShell.classList.remove("hidden");
       document.getElementById("admin-email").textContent = session.user.email;
+      document.querySelector("[data-page=\"users\"]").click();
       commissionInput.value = "";
       commissionInput.disabled = true;
       saveCommissionButton.disabled = true;
