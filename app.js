@@ -2,6 +2,7 @@ const pages = {
   overview: { title: "نظرة عامة", id: "overview-page" },
   users: { title: "إدارة المستخدمين", id: "users-page" },
   settings: { title: "إعدادات التطبيق", id: "settings-page" },
+  support: { title: "طريقة الدعم", id: "support-page" },
   commission: { title: "العمولة", id: "commission-page" }
 };
 
