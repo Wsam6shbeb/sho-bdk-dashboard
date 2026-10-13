@@ -87,3 +87,19 @@
 .setting-field input:focus,.setting-field select:focus{outline:none;border-color:#6b87cf;box-shadow:0 0 0 3px #e8eeff}
 .setting-field input:disabled,.setting-field select:disabled{opacity:.6;cursor:not-allowed}
 @media(max-width:650px){.settings-grid{grid-template-columns:1fr}}
+
+
+/* Clickable setting help and explanation popup */
+.setting-label-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.setting-label-row label{margin:0!important}
+.setting-info-button{display:inline-grid;place-items:center;width:21px;height:21px;flex:none;padding:0;border:1px solid #9aa8c0;border-radius:50%;background:#fff;color:#263f7a;font-family:Arial,sans-serif;font-size:13px;font-weight:800;line-height:1;cursor:pointer}
+.setting-info-button:hover,.setting-info-button:focus-visible{background:#eaf0ff;border-color:#263f7a;outline:2px solid #d8e2ff;outline-offset:2px}
+.support-setting-label{margin-top:18px}
+.setting-info-modal{position:fixed;inset:0;z-index:10000;display:grid;place-items:center;padding:18px;background:rgba(15,23,42,.52)}
+.setting-info-modal.hidden{display:none!important}
+.setting-info-card{width:min(100%,460px);background:#fff;border:1px solid #e8ebf1;border-radius:16px;padding:22px;box-shadow:0 24px 70px rgba(15,23,42,.24);direction:rtl}
+.setting-info-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+.setting-info-heading h2{margin:0;font-size:17px}
+.setting-info-card p{font-size:13px;line-height:2;color:#475467;margin:0 0 20px;white-space:pre-line}
+.setting-info-close{width:32px;height:32px;border:1px solid #dce1eb;border-radius:9px;background:#fff;color:#344054;font-size:22px;line-height:1;cursor:pointer}
+.setting-info-card .primary-button{min-width:100px}
