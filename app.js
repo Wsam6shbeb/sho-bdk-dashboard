@@ -57,17 +57,19 @@ async function callSettingsApi(session, method = "GET", body) {
 }
 
 async function enterDashboard(session) {
-  // A settings API failure must not sign the administrator out.
-  loginScreen.classList.add("hidden");
-  dashboardShell.classList.remove("hidden");
-  document.getElementById("admin-email").textContent = session.user.email;
+  // Keep the dashboard hidden until the server confirms this account is authorized.
+  loginScreen.classList.remove("hidden");
+  dashboardShell.classList.add("hidden");
   commissionInput.disabled = true;
   saveCommissionButton.disabled = true;
-  commissionStatus.classList.remove("error");
-  commissionStatus.textContent = "جارٍ تحميل إعداد العمولة...";
+  setLoginMessage("جارٍ التحقق من صلاحية الحساب...", false);
 
   try {
     const settings = await callSettingsApi(session);
+    // Only reveal the dashboard after the server-side authorization check succeeds.
+    loginScreen.classList.add("hidden");
+    dashboardShell.classList.remove("hidden");
+    document.getElementById("admin-email").textContent = session.user.email;
     commissionInput.value = String(settings.commission);
     commissionStatus.textContent = settings.isFlat
       ? "تم تحميل العمولة المحفوظة من قاعدة البيانات."
@@ -77,25 +79,17 @@ async function enterDashboard(session) {
     saveCommissionButton.disabled = false;
     return true;
   } catch (error) {
-    // A forbidden email is not an authorized admin; only infrastructure/settings failures keep the session.
+    dashboardShell.classList.add("hidden");
+    loginScreen.classList.remove("hidden");
+
     if (error.status === 403) {
       await supabaseClient.auth.signOut();
-      dashboardShell.classList.add("hidden");
-      loginScreen.classList.remove("hidden");
       setLoginMessage("هذا الحساب غير مخوّل لإدارة التطبيق. استخدم بريد وسام 24 المصرّح به.");
       return false;
     }
 
-    // Keep the authenticated session for temporary API/configuration failures.
-    commissionStatus.textContent = error.message || "تم تسجيل الدخول، لكن تعذّر تحميل إعداد العمولة.";
-    commissionStatus.classList.add("error");
-
-    document.querySelectorAll(".nav-item").forEach((item) => {
-      item.classList.toggle("active", item.dataset.page === "commission");
-    });
-    Object.values(pages).forEach((page) => document.getElementById(page.id).classList.add("hidden"));
-    document.getElementById(pages.commission.id).classList.remove("hidden");
-    document.getElementById("page-title").textContent = pages.commission.title;
+    // Keep the session for temporary service failures, but never show the dashboard without authorization.
+    setLoginMessage(error.message || "تعذّر التحقق من صلاحية الحساب حالياً. حاول مجدداً.");
     return false;
   }
 }
