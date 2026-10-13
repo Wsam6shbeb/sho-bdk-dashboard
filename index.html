@@ -33,6 +33,7 @@
       </div>
       <div class="side-label">القائمة الرئيسية</div>
       <button class="nav-item active" data-page="overview"><span>▦</span> نظرة عامة</button>
+      <button class="nav-item" data-page="users"><span>♙</span> إدارة المستخدمين</button>
       <button class="nav-item" data-page="settings"><span>⚙</span> إعدادات التطبيق</button>
       <button class="nav-item" data-page="commission"><span>◈</span> العمولة</button>
       <div class="sidebar-bottom">
@@ -65,6 +66,37 @@
         </div>
         <div class="section-heading"><div><h2>ملخص الإدارة</h2><p>سنضيف أرقام المستخدمين والطلبات لاحقاً بعد مراجعة صلاحيات الوصول.</p></div></div>
         <div class="panel next-panel"><div class="panel-icon">✓</div><div><h3>الحماية أولاً</h3><p>لا يمكن تعديل إعدادات التطبيق إلا من خلال جلسة مدير معتمدة.</p></div></div>
+      </section>
+
+      <section id="users-page" class="page hidden">
+        <div class="section-heading">
+          <div><h2>إدارة المستخدمين</h2><p>عرض حسابات المستخدمين ومقدّمي الخدمات من قاعدة البيانات.</p></div>
+          <button id="refresh-users" class="secondary-button" type="button">تحديث القائمة</button>
+        </div>
+        <div class="user-stats">
+          <div class="user-stat"><span>إجمالي الحسابات</span><strong id="users-total">—</strong></div>
+          <div class="user-stat"><span>مقدّمو الخدمات</span><strong id="providers-total">—</strong></div>
+          <div class="user-stat"><span>الحسابات الفعّالة</span><strong id="active-users-total">—</strong></div>
+        </div>
+        <div class="panel users-panel">
+          <div class="users-toolbar">
+            <input id="users-search" type="search" placeholder="ابحث بالاسم أو الهاتف أو المنطقة" aria-label="ابحث عن مستخدم">
+            <select id="users-filter" aria-label="تصفية المستخدمين">
+              <option value="all">كل الحسابات</option>
+              <option value="providers">مقدّمو الخدمات</option>
+              <option value="customers">المستخدمون فقط</option>
+              <option value="active">الحسابات الفعّالة</option>
+              <option value="inactive">الحسابات غير الفعّالة أو المحذوفة</option>
+            </select>
+          </div>
+          <p id="users-status" class="helper" role="status">اضغط تحديث القائمة لعرض المستخدمين.</p>
+          <div class="users-table-wrap">
+            <table class="users-table">
+              <thead><tr><th>المستخدم</th><th>الهاتف</th><th>المنطقة</th><th>النوع</th><th>الحالة</th><th>التقييم / المكتمل</th><th>تاريخ التسجيل</th></tr></thead>
+              <tbody id="users-table-body"><tr><td colspan="7" class="empty-users">لم يتم تحميل القائمة بعد.</td></tr></tbody>
+            </table>
+          </div>
+        </div>
       </section>
 
       <section id="settings-page" class="page hidden">
