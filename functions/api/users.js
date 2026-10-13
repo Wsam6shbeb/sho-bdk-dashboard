@@ -57,7 +57,10 @@ export async function onRequest({ request, env }) {
       env,
       "/rest/v1/users?select=id,full_name,phone,region,is_provider,verification_status,status,created_at,deleted_at&order=created_at.desc&limit=500"
     );
-    if (!usersResponse.ok) return json({ error: "تعذّر تحميل قائمة المستخدمين." }, 502);
+    if (!usersResponse.ok) {
+      console.error("Users API upstream failure:", usersResponse.status, await usersResponse.text());
+      return json({ error: "تعذّر تحميل قائمة المستخدمين. رمز الخطأ: " + usersResponse.status }, 502);
+    }
 
     const users = await usersResponse.json();
     if (!Array.isArray(users)) return json({ error: "وصلت بيانات مستخدمين غير صالحة." }, 502);
