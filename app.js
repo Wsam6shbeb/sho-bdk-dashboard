@@ -83,7 +83,7 @@ async function enterDashboard(session) {
       dashboardShell.classList.add("hidden");
       loginScreen.classList.remove("hidden");
       await supabaseClient.auth.signOut();
-      setLoginMessage("هذا الحساب غير مخوّل لإدارة التطبيق. استخدم بريد وسام 24 المصرّح به.");
+      setLoginMessage("تعذّر تسجيل الدخول. تحقق من بياناتك وحاول مجدداً.");
       return false;
     }
 
