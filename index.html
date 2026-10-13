@@ -112,8 +112,17 @@
       </div>
 
       <section id="settings-page" class="page hidden">
-        <div class="section-heading"><div><h2>إعدادات التطبيق</h2><p>سنضيف الإعدادات القابلة للتغيير تدريجياً بعد التحقق من أثر كل إعداد.</p></div></div>
-        <div class="panel"><h3>الإعدادات العامة</h3><p class="muted">لم نفعّل تعديل الإعدادات الأخرى بعد، لتجنب تغيير سلوك التطبيق بالخطأ.</p></div>
+        <div class="section-heading"><div><h2>إعدادات التطبيق</h2><p>عدّل معلومات التواصل التي تظهر للمستخدمين عند الحاجة إلى مساعدة.</p></div></div>
+        <div class="panel commission-panel">
+          <h3>معلومات التواصل مع الدعم</h3>
+          <p class="muted">يمكنك تغيير الإيميل أو رقم الهاتف لاحقاً من هنا دون تعديل كود التطبيق.</p>
+          <label for="support-email" style="display:block;margin-top:18px;font-size:13px;font-weight:700">إيميل الدعم</label>
+          <input id="support-email" type="email" autocomplete="email" maxlength="254" style="display:block;width:100%;max-width:460px;margin-top:7px;padding:12px;border:1px solid #dce1eb;border-radius:10px;background:#f8fafc" value="shobdkhelpcenter@gmail.com">
+          <label for="support-phone" style="display:block;margin-top:16px;font-size:13px;font-weight:700">رقم هاتف الدعم (اختياري)</label>
+          <input id="support-phone" type="tel" autocomplete="tel" maxlength="40" placeholder="يمكنك إضافته لاحقاً" style="display:block;width:100%;max-width:460px;margin-top:7px;padding:12px;border:1px solid #dce1eb;border-radius:10px;background:#f8fafc">
+          <p id="support-status" class="helper" role="status">جارٍ تحميل معلومات التواصل…</p>
+          <button id="save-support" class="primary-button" type="button">حفظ معلومات الدعم</button>
+        </div>
       </section>
 
       <section id="commission-page" class="page hidden">
