@@ -60,9 +60,20 @@ export async function onRequest({ request, env }) {
     const keys = "commission_min,commission_max,commission_default";
 
     if (request.method === "GET") {
+      const appKeys = [
+        "agreement_approval_timeout_seconds",
+        "chat_writable_after_completion_days",
+        "currency",
+        "launch_region",
+        "notification_retention_days",
+        "rating_window_hours",
+        "signup_bonus_amount",
+        "test_topup_enabled"
+      ];
+      const allKeys = keys + ",support_email,support_phone," + appKeys.join(",");
       const response = await supabaseRequest(
         env,
-        "/rest/v1/app_settings?select=key,value&key=in.(" + keys + ",support_email,support_phone)"
+        "/rest/v1/app_settings?select=key,value&key=in.(" + allKeys + ")"
       );
       if (!response.ok) return json({ error: "تعذّر قراءة إعدادات التطبيق من قاعدة البيانات." }, 502);
 
@@ -78,7 +89,17 @@ export async function onRequest({ request, env }) {
         isFlat: values.commission_min === values.commission_max &&
           values.commission_max === values.commission_default,
         supportEmail: typeof rawValues.support_email === "string" ? rawValues.support_email : "shobdkhelpcenter@gmail.com",
-        supportPhone: typeof rawValues.support_phone === "string" ? rawValues.support_phone : ""
+        supportPhone: typeof rawValues.support_phone === "string" ? rawValues.support_phone : "",
+        appSettings: Object.fromEntries([
+          "agreement_approval_timeout_seconds",
+          "chat_writable_after_completion_days",
+          "currency",
+          "launch_region",
+          "notification_retention_days",
+          "rating_window_hours",
+          "signup_bonus_amount",
+          "test_topup_enabled"
+        ].map((key) => [key, rawValues[key] ?? null]))
       });
     }
 
@@ -116,7 +137,48 @@ export async function onRequest({ request, env }) {
       return json({ success: true, supportEmail: email, supportPhone: phone });
     }
 
-        const amount = Number(body?.commission);
+    if (body?.action === "app-settings") {
+      const settings = body.settings;
+      if (!settings || typeof settings !== "object" || Array.isArray(settings)) {
+        return json({ error: "إعدادات التطبيق المرسلة غير صالحة." }, 400);
+      }
+
+      const rules = {
+        agreement_approval_timeout_seconds: (value) => Number.isInteger(value) && value >= 30 && value <= 3600,
+        chat_writable_after_completion_days: (value) => Number.isInteger(value) && value >= 0 && value <= 365,
+        currency: (value) => typeof value === "string" && /^[A-Z]{3}$/.test(value),
+        launch_region: (value) => typeof value === "string" && value.trim().length >= 2 && value.trim().length <= 100,
+        notification_retention_days: (value) => Number.isInteger(value) && value >= 1 && value <= 365,
+        rating_window_hours: (value) => Number.isInteger(value) && value >= 1 && value <= 720,
+        signup_bonus_amount: (value) => Number.isInteger(value) && value >= 0 && value <= 1000000,
+        test_topup_enabled: (value) => typeof value === "boolean"
+      };
+      const entries = Object.entries(settings);
+      if (!entries.length || entries.some(([key, value]) => !rules[key] || !rules[key](value))) {
+        return json({ error: "توجد قيمة غير صالحة. راجع الحقول وحدودها قبل الحفظ." }, 400);
+      }
+
+      for (const [key, value] of entries) {
+        const response = await supabaseRequest(
+          env,
+          "/rest/v1/app_settings?key=eq." + encodeURIComponent(key),
+          {
+            method: "PATCH",
+            headers: { Prefer: "return=representation" },
+            body: JSON.stringify({ value: key === "launch_region" ? value.trim() : value })
+          }
+        );
+        if (!response.ok) return json({ error: "تعذّر حفظ الإعداد «" + key + "». قد تكون بعض القيم السابقة قد حُفظت؛ أعد تحميل الإعدادات للتحقق." }, 502);
+        const updated = await response.json();
+        if (!Array.isArray(updated) || updated.length !== 1) {
+          return json({ error: "لم يتم تأكيد حفظ الإعداد «" + key + "». أعد تحميل الإعدادات للتحقق." }, 500);
+        }
+      }
+
+      return json({ success: true, settings });
+    }
+
+    const amount = Number(body?.commission);
     if (!Number.isInteger(amount) || amount < 50 || amount > 1000) {
       return json({ error: "العمولة يجب أن تكون رقماً صحيحاً بين 50 و1000 ليرة سورية جديدة." }, 400);
     }
