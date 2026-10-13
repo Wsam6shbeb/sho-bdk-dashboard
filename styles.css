@@ -72,3 +72,6 @@
 .user-details-footer{display:flex;justify-content:center;padding-top:12px;margin-top:4px;border-top:1px solid #edf0f5}
 .user-details-footer .primary-button{min-width:140px}
 @media(max-width:480px){.user-details-card{padding:16px}.user-detail-row{grid-template-columns:minmax(90px,.85fr) minmax(0,1.15fr);column-gap:14px}}
+
+.user-state-button{white-space:nowrap;padding:6px 10px;margin-inline-start:6px}
+.users-table td:last-child .user-state-button{margin-top:6px}
