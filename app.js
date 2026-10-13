@@ -14,6 +14,10 @@ const dashboardShell = document.getElementById("dashboard-shell");
 const commissionInput = document.getElementById("commission");
 const commissionStatus = document.getElementById("commission-status");
 const saveCommissionButton = document.getElementById("save-commission");
+const supportEmailInput = document.getElementById("support-email");
+const supportPhoneInput = document.getElementById("support-phone");
+const supportStatus = document.getElementById("support-status");
+const saveSupportButton = document.getElementById("save-support");
 const supabaseClient = window.supabase?.createClient(
   window.SHO_BDK_CONFIG.supabaseUrl,
   window.SHO_BDK_CONFIG.supabaseKey
@@ -77,6 +81,11 @@ async function enterDashboard(session) {
       ? "تم تحميل العمولة المحفوظة من قاعدة البيانات."
       : "تنبيه: القيم الحالية ليست عمولة ثابتة. اضغط حفظ فقط إذا كنت تريد توحيدها على الرقم الظاهر.";
     commissionStatus.classList.toggle("error", !settings.isFlat);
+    supportEmailInput.value = settings.supportEmail || "shobdkhelpcenter@gmail.com";
+    supportPhoneInput.value = settings.supportPhone || "";
+    supportStatus.textContent = "تم تحميل معلومات التواصل المحفوظة.";
+    supportStatus.classList.remove("error");
+    saveSupportButton.disabled = false;
     commissionInput.disabled = false;
     saveCommissionButton.disabled = false;
     return true;
@@ -100,6 +109,11 @@ async function enterDashboard(session) {
       saveCommissionButton.disabled = true;
       commissionStatus.textContent = error.message || "تعذّر تحميل العمولة من قاعدة البيانات. يمكنك استخدام لوحة التحكم، وإعداد العمولة غير متاح مؤقتاً.";
       commissionStatus.classList.add("error");
+      supportEmailInput.value = "shobdkhelpcenter@gmail.com";
+      supportPhoneInput.value = "";
+      supportStatus.textContent = "تعذّر تحميل معلومات الدعم. حدّث الصفحة وحاول مجدداً.";
+      supportStatus.classList.add("error");
+      saveSupportButton.disabled = true;
       return true;
     }
 
@@ -404,6 +418,39 @@ saveCommissionButton.addEventListener("click", async () => {
   } finally {
     saveCommissionButton.disabled = false;
     saveCommissionButton.textContent = "حفظ العمولة";
+  }
+});
+
+saveSupportButton.addEventListener("click", async () => {
+  const email = supportEmailInput.value.trim();
+  const phone = supportPhoneInput.value.trim();
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    supportStatus.textContent = "أدخل إيميل دعم صحيحاً.";
+    supportStatus.classList.add("error");
+    return;
+  }
+  saveSupportButton.disabled = true;
+  saveSupportButton.textContent = "جارٍ الحفظ…";
+  supportStatus.textContent = "جارٍ حفظ معلومات الدعم والتحقق منها…";
+  supportStatus.classList.remove("error");
+  try {
+    const { data, error } = await supabaseClient.auth.getSession();
+    if (error || !data.session) throw new Error("انتهت جلسة الدخول. سجّل الدخول مجدداً.");
+    const saved = await callSettingsApi(data.session, "POST", { action: "support", supportEmail: email, supportPhone: phone });
+    const verified = await callSettingsApi(data.session);
+    if (!saved.success || verified.supportEmail !== email || (verified.supportPhone || "") !== phone) {
+      throw new Error("لم نتمكن من تأكيد حفظ معلومات الدعم. راجع الإعدادات قبل إعادة المحاولة.");
+    }
+    supportEmailInput.value = verified.supportEmail;
+    supportPhoneInput.value = verified.supportPhone || "";
+    supportStatus.textContent = "تم حفظ معلومات الدعم والتحقق منها بنجاح.";
+    supportStatus.classList.remove("error");
+  } catch (error) {
+    supportStatus.textContent = error.message || "تعذّر حفظ معلومات الدعم.";
+    supportStatus.classList.add("error");
+  } finally {
+    saveSupportButton.disabled = false;
+    saveSupportButton.textContent = "حفظ معلومات الدعم";
   }
 });
 
