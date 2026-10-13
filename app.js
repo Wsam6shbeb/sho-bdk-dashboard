@@ -383,7 +383,35 @@ usersFilter.addEventListener("change", renderUsers);
 document.getElementById("refresh-users").addEventListener("click", () => loadUsers(true));
 
 googleLoginButton.addEventListener("click", async () => {
-  if (!supabaseClient) {
+  const settingInfoModal = document.getElementById("setting-info-modal");
+const settingInfoTitle = document.getElementById("setting-info-title");
+const settingInfoDescription = document.getElementById("setting-info-description");
+
+function closeSettingInfo() {
+  settingInfoModal.classList.add("hidden");
+  settingInfoModal.setAttribute("aria-hidden", "true");
+}
+
+document.addEventListener("click", (event) => {
+  const button = event.target.closest(".setting-info-button");
+  if (button) {
+    settingInfoTitle.textContent = button.dataset.infoTitle || "معلومات الإعداد";
+    settingInfoDescription.textContent = button.dataset.info || "لا تتوفر تفاصيل إضافية لهذا الإعداد.";
+    settingInfoModal.classList.remove("hidden");
+    settingInfoModal.setAttribute("aria-hidden", "false");
+    document.getElementById("close-setting-info").focus();
+    return;
+  }
+  if (event.target === settingInfoModal || event.target.closest("#close-setting-info, #setting-info-done")) {
+    closeSettingInfo();
+  }
+});
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && !settingInfoModal.classList.contains("hidden")) closeSettingInfo();
+});
+
+if (!supabaseClient) {
     setLoginMessage("تعذّر تحميل مكتبة تسجيل الدخول. حدّث الصفحة وحاول مجدداً.");
     return;
   }
