@@ -92,12 +92,22 @@
           <p id="users-status" class="helper" role="status">اضغط تحديث القائمة لعرض المستخدمين.</p>
           <div class="users-table-wrap">
             <table class="users-table">
-              <thead><tr><th>المستخدم</th><th>الهاتف</th><th>المنطقة</th><th>النوع</th><th>الحالة</th><th>التقييم / المكتمل</th><th>تاريخ التسجيل</th></tr></thead>
-              <tbody id="users-table-body"><tr><td colspan="7" class="empty-users">لم يتم تحميل القائمة بعد.</td></tr></tbody>
+              <thead><tr><th>المستخدم</th><th>الهاتف</th><th>المنطقة</th><th>النوع</th><th>الحالة</th><th>التقييم / المكتمل</th><th>تاريخ التسجيل</th><th>التفاصيل</th></tr></thead>
+              <tbody id="users-table-body"><tr><td colspan="8" class="empty-users">لم يتم تحميل القائمة بعد.</td></tr></tbody>
             </table>
           </div>
         </div>
       </section>
+
+      <div id="user-details-modal" class="user-details-modal hidden" role="dialog" aria-modal="true" aria-labelledby="user-details-title" aria-hidden="true">
+        <div class="user-details-card">
+          <div class="user-details-heading">
+            <h2 id="user-details-title">تفاصيل المستخدم</h2>
+            <button id="close-user-details" class="secondary-button" type="button" aria-label="إغلاق التفاصيل">إغلاق</button>
+          </div>
+          <div id="user-details-content" class="user-details-content"></div>
+        </div>
+      </div>
 
       <section id="settings-page" class="page hidden">
         <div class="section-heading"><div><h2>إعدادات التطبيق</h2><p>سنضيف الإعدادات القابلة للتغيير تدريجياً بعد التحقق من أثر كل إعداد.</p></div></div>
