@@ -37,3 +37,15 @@
 #users-status.error{color:#b42318}
 #refresh-users:disabled{opacity:.65;cursor:wait}
 @media(max-width:760px){.user-stats{grid-template-columns:1fr;gap:9px}.user-stat{padding:12px 15px}.user-stat strong{font-size:21px}.users-toolbar{flex-direction:column}.users-toolbar select{width:100%}.section-heading{align-items:flex-start;gap:10px}}
+
+
+/* User details dialog */
+.user-details-modal{position:fixed;inset:0;z-index:20;background:rgba(15,23,42,.52);display:grid;place-items:center;padding:18px}
+.user-details-card{width:min(100%,560px);max-height:min(85vh,760px);overflow:auto;background:#fff;border-radius:17px;padding:22px;box-shadow:0 24px 70px rgba(15,23,42,.24)}
+.user-details-heading{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px}
+.user-details-heading h2{font-size:18px;margin:0}
+.user-details-content{display:flex;flex-direction:column}
+.user-detail-row{display:flex;justify-content:space-between;gap:18px;padding:12px 2px;border-bottom:1px solid #edf0f5;font-size:12px}
+.user-detail-row span{color:#6b7280;flex:none}
+.user-detail-row strong{text-align:left;overflow-wrap:anywhere}
+.user-details-button{white-space:nowrap;padding:6px 10px}
