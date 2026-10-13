@@ -113,8 +113,52 @@
       </div>
 
       <section id="settings-page" class="page hidden">
-        <div class="section-heading"><div><h2>إعدادات التطبيق</h2><p>إعدادات عامة للتطبيق.</p></div></div>
-        <div class="panel note-panel"><strong>ملاحظة</strong><p>إعدادات التواصل مع الدعم موجودة الآن في قسم «طريقة الدعم» بالقائمة الجانبية.</p></div>
+        <div class="section-heading"><div><h2>إعدادات التطبيق</h2><p>عدّل القيم العامة المستخدمة في التطبيق، وسيتم حفظها في قاعدة البيانات.</p></div></div>
+        <form id="app-settings-form" class="panel app-settings-panel">
+          <div class="settings-grid">
+            <div class="setting-field">
+              <label for="setting-launch-region">منطقة الإطلاق الافتراضية</label>
+              <input id="setting-launch-region" type="text" maxlength="100" required>
+              <small>مثال: اللاذقية</small>
+            </div>
+            <div class="setting-field">
+              <label for="setting-currency">رمز العملة</label>
+              <input id="setting-currency" type="text" maxlength="3" minlength="3" pattern="[A-Z]{3}" required>
+              <small>رمز من 3 أحرف كبيرة، مثل SYP</small>
+            </div>
+            <div class="setting-field">
+              <label for="setting-agreement-timeout">مهلة تأكيد الاتفاق (ثانية)</label>
+              <input id="setting-agreement-timeout" type="number" min="30" max="3600" step="1" required>
+            </div>
+            <div class="setting-field">
+              <label for="setting-chat-days">مدة الكتابة في المحادثة بعد الإكمال (يوم)</label>
+              <input id="setting-chat-days" type="number" min="0" max="365" step="1" required>
+            </div>
+            <div class="setting-field">
+              <label for="setting-rating-hours">مهلة التقييم (ساعة)</label>
+              <input id="setting-rating-hours" type="number" min="1" max="720" step="1" required>
+            </div>
+            <div class="setting-field">
+              <label for="setting-notification-days">مدة الاحتفاظ بالإشعارات (يوم)</label>
+              <input id="setting-notification-days" type="number" min="1" max="365" step="1" required>
+            </div>
+            <div class="setting-field">
+              <label for="setting-signup-bonus">مكافأة التسجيل</label>
+              <input id="setting-signup-bonus" type="number" min="0" max="1000000" step="1" required>
+            </div>
+            <div class="setting-field setting-toggle">
+              <label for="setting-test-topup">تفعيل الشحن التجريبي</label>
+              <select id="setting-test-topup" required>
+                <option value="false">معطّل</option>
+                <option value="true">مفعّل</option>
+              </select>
+              <small>اتركه معطّلاً للاستخدام الفعلي ما لم تكن تختبر ميزة الشحن.</small>
+            </div>
+          </div>
+          <p id="app-settings-status" class="helper" role="status">جارٍ تحميل الإعدادات…</p>
+          <button id="save-app-settings" class="primary-button" type="submit">حفظ إعدادات التطبيق</button>
+        </form>
+        <div class="panel note-panel"><strong>مهم</strong><p>لن تتغير أي قيمة إلا بعد الضغط على حفظ. يتم التحقق من الصلاحية والقيم على الخادم قبل تحديث قاعدة البيانات.</p></div>
       </section>
 
       <section id="support-page" class="page hidden">
