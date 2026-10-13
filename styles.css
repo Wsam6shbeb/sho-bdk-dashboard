@@ -29,7 +29,16 @@
 .users-table th{background:#f7f8fb;color:#697386;font-weight:700;white-space:nowrap}
 .users-table th,.users-table td{padding:13px 12px;border-bottom:1px solid #edf0f5}
 .users-table td{color:#364152;white-space:nowrap}
+
+
+
+
 .users-table td strong{font-weight:700;color:#182230}
+
+.users-table tbody tr:nth-child(odd) {background-color: #f1f3f6;}
+.users-table tbody tr:nth-child(even) {background-color: #ffffff;}
+
+
 .empty-users{text-align:center!important;color:#778195!important;padding:28px!important}
 .user-status{display:inline-flex;align-items:center;border-radius:30px;padding:4px 9px;font-size:11px;font-weight:700}
 .status-active{background:#e9f8ef;color:#187344}.status-inactive{background:#fff1f0;color:#b42318}
