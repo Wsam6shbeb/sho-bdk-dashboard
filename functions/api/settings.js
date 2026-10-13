@@ -62,11 +62,12 @@ export async function onRequest({ request, env }) {
     if (request.method === "GET") {
       const response = await supabaseRequest(
         env,
-        "/rest/v1/app_settings?select=key,value&key=in.(" + keys + ")"
+        "/rest/v1/app_settings?select=key,value&key=in.(" + keys + ",support_email,support_phone)"
       );
-      if (!response.ok) return json({ error: "تعذّر قراءة إعداد العمولة من قاعدة البيانات." }, 502);
+      if (!response.ok) return json({ error: "تعذّر قراءة إعدادات التطبيق من قاعدة البيانات." }, 502);
 
       const rows = await response.json();
+      const rawValues = Object.fromEntries(rows.map((row) => [row.key, row.value]));
       const values = Object.fromEntries(rows.map((row) => [row.key, Number(row.value)]));
       if (![values.commission_min, values.commission_max, values.commission_default].every(Number.isFinite)) {
         return json({ error: "إعدادات العمولة في قاعدة البيانات ناقصة أو غير صالحة." }, 500);
@@ -75,7 +76,9 @@ export async function onRequest({ request, env }) {
       return json({
         commission: values.commission_default,
         isFlat: values.commission_min === values.commission_max &&
-          values.commission_max === values.commission_default
+          values.commission_max === values.commission_default,
+        supportEmail: typeof rawValues.support_email === "string" ? rawValues.support_email : "shobdkhelpcenter@gmail.com",
+        supportPhone: typeof rawValues.support_phone === "string" ? rawValues.support_phone : ""
       });
     }
 
@@ -86,7 +89,34 @@ export async function onRequest({ request, env }) {
       return json({ error: "البيانات المرسلة غير صالحة." }, 400);
     }
 
-    const amount = Number(body?.commission);
+    if (body?.action === "support") {
+      const email = typeof body.supportEmail === "string" ? body.supportEmail.trim() : "";
+      const phone = typeof body.supportPhone === "string" ? body.supportPhone.trim() : "";
+      if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email) || email.length > 254) {
+        return json({ error: "أدخل إيميل دعم صحيحاً." }, 400);
+      }
+      if (phone.length > 40) return json({ error: "رقم الهاتف طويل جداً." }, 400);
+
+      for (const [key, value] of [["support_email", email], ["support_phone", phone]]) {
+        const response = await supabaseRequest(
+          env,
+          "/rest/v1/app_settings?key=eq." + key,
+          {
+            method: "PATCH",
+            headers: { Prefer: "return=representation" },
+            body: JSON.stringify({ value })
+          }
+        );
+        if (!response.ok) return json({ error: "تعذّر حفظ معلومات الدعم في قاعدة البيانات." }, 502);
+        const updated = await response.json();
+        if (!Array.isArray(updated) || updated.length !== 1) {
+          return json({ error: "لم يتم تأكيد حفظ معلومات الدعم. حدّث الصفحة وتحقق من القيم." }, 500);
+        }
+      }
+      return json({ success: true, supportEmail: email, supportPhone: phone });
+    }
+
+        const amount = Number(body?.commission);
     if (!Number.isInteger(amount) || amount < 50 || amount > 1000) {
       return json({ error: "العمولة يجب أن تكون رقماً صحيحاً بين 50 و1000 ليرة سورية جديدة." }, 400);
     }
