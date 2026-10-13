@@ -92,7 +92,7 @@ export async function onRequest({ request, env }) {
     if (body?.action === "support") {
       const email = typeof body.supportEmail === "string" ? body.supportEmail.trim() : "";
       const phone = typeof body.supportPhone === "string" ? body.supportPhone.trim() : "";
-      if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email) || email.length > 254) {
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254) {
         return json({ error: "أدخل إيميل دعم صحيحاً." }, 400);
       }
       if (phone.length > 40) return json({ error: "رقم الهاتف طويل جداً." }, 400);
