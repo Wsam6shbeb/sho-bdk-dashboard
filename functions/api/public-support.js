@@ -12,7 +12,16 @@ function json(data, status = 200) {
 }
 
 export async function onRequest({ request, env }) {
-  if (request.method === "OPTIONS") return json({}, 204);
+  if (request.method === "OPTIONS") {
+    return new Response(null, {
+      status: 204,
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type"
+      }
+    });
+  }
   if (request.method !== "GET") return json({ error: "Method not allowed" }, 405);
   if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) {
     return json({ error: "Support settings are unavailable" }, 503);
