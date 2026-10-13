@@ -87,10 +87,9 @@ export async function onRequest({ request, env }) {
       if (target.is_admin || userId === auth.user.id) {
         return json({ error: "لا يمكن إيقاف حساب المدير أو حسابك الحالي." }, 403);
       }
-      if (target.status === status) {
-        return json({ success: true, status, message: status === "active" ? "الحساب فعّال بالفعل." : "الحساب موقوف بالفعل." });
-      }
-
+      // Even when the database already has this status, continue below to sync
+      // the Supabase Auth ban state. A previous attempt may have updated the row
+      // but failed before the Auth ban/unban request completed.
       const updateResponse = await fetch(
         env.SUPABASE_URL + "/rest/v1/users?id=eq." + userId,
         {
