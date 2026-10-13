@@ -140,7 +140,7 @@ function renderUsers() {
   if (filtered.length === 0) {
     const row = document.createElement("tr");
     const cell = document.createElement("td");
-    cell.colSpan = 7;
+    cell.colSpan = 8;
     cell.className = "empty-users";
     cell.textContent = cachedUsers.length ? "ما في حسابات مطابقة للبحث." : "ما في مستخدمين لعرضهم.";
     row.appendChild(cell);
@@ -184,7 +184,15 @@ function renderUsers() {
       ? createdDate.toLocaleDateString("ar")
       : "—";
 
-    [nameCell, phoneCell, regionCell, typeCell, statusCell, providerCell, createdCell]
+    const actionCell = document.createElement("td");
+    const detailsButton = document.createElement("button");
+    detailsButton.type = "button";
+    detailsButton.className = "secondary-button user-details-button";
+    detailsButton.textContent = "عرض التفاصيل";
+    detailsButton.addEventListener("click", () => showUserDetails(user));
+    actionCell.appendChild(detailsButton);
+
+    [nameCell, phoneCell, regionCell, typeCell, statusCell, providerCell, createdCell, actionCell]
       .forEach((cell) => row.appendChild(cell));
     usersTableBody.appendChild(row);
   });
@@ -226,6 +234,51 @@ async function loadUsers(force = true) {
     refreshButton.disabled = false;
   }
 }
+
+const userDetailsModal = document.getElementById("user-details-modal");
+const userDetailsContent = document.getElementById("user-details-content");
+
+function showUserDetails(user) {
+  const rows = [
+    ["الاسم", user.full_name || "اسم غير مضاف"],
+    ["رقم الهاتف", user.phone || "—"],
+    ["المنطقة", user.region || "—"],
+    ["نوع الحساب", user.is_provider ? "مقدّم خدمة" : "مستخدم"],
+    ["حالة الحساب", user.deleted_at ? "محذوف" : (user.status || "غير معروف")],
+    ["حالة التوثيق", user.verification_status || "غير محددة"],
+    ["تاريخ التسجيل", user.created_at && !Number.isNaN(new Date(user.created_at).getTime()) ? new Date(user.created_at).toLocaleString("ar") : "—"],
+    ["تقييم مقدّم الخدمة", user.provider && user.provider.rating_avg != null ? Number(user.provider.rating_avg).toFixed(1) : "—"],
+    ["الخدمات المكتملة", user.provider && user.provider.completed_services_count != null ? String(user.provider.completed_services_count) : "—"],
+    ["التوفّر لاستقبال الطلبات", user.provider ? (user.provider.is_available ? "متاح" : "غير متاح") : "ليس مقدّم خدمة"]
+  ];
+
+  userDetailsContent.replaceChildren();
+  rows.forEach(([label, value]) => {
+    const row = document.createElement("div");
+    row.className = "user-detail-row";
+    const labelElement = document.createElement("span");
+    labelElement.textContent = label;
+    const valueElement = document.createElement("strong");
+    valueElement.textContent = value;
+    row.append(labelElement, valueElement);
+    userDetailsContent.appendChild(row);
+  });
+  userDetailsModal.classList.remove("hidden");
+  userDetailsModal.setAttribute("aria-hidden", "false");
+}
+
+function closeUserDetails() {
+  userDetailsModal.classList.add("hidden");
+  userDetailsModal.setAttribute("aria-hidden", "true");
+}
+
+document.getElementById("close-user-details").addEventListener("click", closeUserDetails);
+userDetailsModal.addEventListener("click", (event) => {
+  if (event.target === userDetailsModal) closeUserDetails();
+});
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && !userDetailsModal.classList.contains("hidden")) closeUserDetails();
+});
 
 usersSearch.addEventListener("input", renderUsers);
 usersFilter.addEventListener("change", renderUsers);
