@@ -79,16 +79,30 @@ async function enterDashboard(session) {
     saveCommissionButton.disabled = false;
     return true;
   } catch (error) {
-    dashboardShell.classList.add("hidden");
-    loginScreen.classList.remove("hidden");
-
     if (error.status === 403) {
+      dashboardShell.classList.add("hidden");
+      loginScreen.classList.remove("hidden");
       await supabaseClient.auth.signOut();
       setLoginMessage("هذا الحساب غير مخوّل لإدارة التطبيق. استخدم بريد وسام 24 المصرّح به.");
       return false;
     }
 
-    // Keep the session for temporary service failures, but never show the dashboard without authorization.
+    // A 502 is returned only after server-side authorization succeeded and the database settings read failed.
+    // Let the authorized admin enter; keep commission editing disabled until settings load successfully.
+    if (error.status === 502) {
+      loginScreen.classList.add("hidden");
+      dashboardShell.classList.remove("hidden");
+      document.getElementById("admin-email").textContent = session.user.email;
+      commissionInput.value = "";
+      commissionInput.disabled = true;
+      saveCommissionButton.disabled = true;
+      commissionStatus.textContent = error.message || "تعذّر تحميل العمولة من قاعدة البيانات. يمكنك استخدام لوحة التحكم، وإعداد العمولة غير متاح مؤقتاً.";
+      commissionStatus.classList.add("error");
+      return true;
+    }
+
+    dashboardShell.classList.add("hidden");
+    loginScreen.classList.remove("hidden");
     setLoginMessage(error.message || "تعذّر التحقق من صلاحية الحساب حالياً. حاول مجدداً.");
     return false;
   }
