@@ -45,13 +45,98 @@ async function supabaseRequest(env, path) {
 }
 
 export async function onRequest({ request, env }) {
-  if (request.method !== "GET") {
+  if (request.method !== "GET" && request.method !== "PATCH") {
     return json({ error: "طريقة الطلب غير مدعومة." }, 405);
   }
 
   try {
     const auth = await authorize(request, env);
     if (auth.error) return auth.error;
+
+    if (request.method === "PATCH") {
+      let body;
+      try {
+        body = await request.json();
+      } catch {
+        return json({ error: "بيانات الطلب غير صالحة." }, 400);
+      }
+
+      const userId = typeof body.userId === "string" ? body.userId.trim() : "";
+      const status = body.status;
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(userId)) {
+        return json({ error: "معرّف المستخدم غير صالح." }, 400);
+      }
+      if (status !== "active" && status !== "suspended") {
+        return json({ error: "الحالة المسموحة هي فعّال أو موقوف فقط." }, 400);
+      }
+
+      const targetResponse = await supabaseRequest(
+        env,
+        "/rest/v1/users?select=id,status,is_admin,deleted_at&id=eq." + userId
+      );
+      if (!targetResponse.ok) {
+        console.error("User status lookup failed:", targetResponse.status, await targetResponse.text());
+        return json({ error: "تعذّر التحقق من الحساب المطلوب." }, 502);
+      }
+      const targets = await targetResponse.json();
+      const target = Array.isArray(targets) ? targets[0] : null;
+      if (!target) return json({ error: "المستخدم غير موجود." }, 404);
+      if (target.deleted_at || target.status === "deleted") {
+        return json({ error: "لا يمكن تغيير حالة حساب محذوف." }, 409);
+      }
+      if (target.is_admin || userId === auth.user.id) {
+        return json({ error: "لا يمكن إيقاف حساب المدير أو حسابك الحالي." }, 403);
+      }
+      if (target.status === status) {
+        return json({ success: true, status, message: status === "active" ? "الحساب فعّال بالفعل." : "الحساب موقوف بالفعل." });
+      }
+
+      const updateResponse = await fetch(
+        env.SUPABASE_URL + "/rest/v1/users?id=eq." + userId,
+        {
+          method: "PATCH",
+          headers: {
+            apikey: env.SUPABASE_SERVICE_ROLE_KEY,
+            Authorization: "Bearer " + env.SUPABASE_SERVICE_ROLE_KEY,
+            "Content-Type": "application/json",
+            Prefer: "return=representation"
+          },
+          body: JSON.stringify({ status })
+        }
+      );
+      if (!updateResponse.ok) {
+        console.error("User status update failed:", updateResponse.status, await updateResponse.text());
+        return json({ error: "تعذّر حفظ حالة الحساب في قاعدة البيانات." }, 502);
+      }
+
+      // Also ban/unban the Supabase Auth account so suspended users cannot simply re-login.
+      const authAdminResponse = await fetch(
+        env.SUPABASE_URL + "/auth/v1/admin/users/" + userId,
+        {
+          method: "PUT",
+          headers: {
+            apikey: env.SUPABASE_SERVICE_ROLE_KEY,
+            Authorization: "Bearer " + env.SUPABASE_SERVICE_ROLE_KEY,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ ban_duration: status === "suspended" ? "876000h" : "none" })
+        }
+      );
+      if (!authAdminResponse.ok) {
+        console.error("Auth ban update failed:", authAdminResponse.status, await authAdminResponse.text());
+        return json({
+          success: true,
+          status,
+          warning: "تم حفظ حالة الحساب، لكن تعذّر تحديث حظر تسجيل الدخول. تحقّق من سجلات الخادم."
+        }, 502);
+      }
+
+      return json({
+        success: true,
+        status,
+        message: status === "suspended" ? "تم إيقاف الحساب." : "تمت إعادة تفعيل الحساب."
+      });
+    }
 
     const usersResponse = await supabaseRequest(
       env,
