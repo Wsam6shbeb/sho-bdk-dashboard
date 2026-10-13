@@ -57,11 +57,17 @@ async function callSettingsApi(session, method = "GET", body) {
 }
 
 async function enterDashboard(session) {
+  // A settings API failure must not sign the administrator out.
+  loginScreen.classList.add("hidden");
+  dashboardShell.classList.remove("hidden");
+  document.getElementById("admin-email").textContent = session.user.email;
+  commissionInput.disabled = true;
+  saveCommissionButton.disabled = true;
+  commissionStatus.classList.remove("error");
+  commissionStatus.textContent = "جارٍ تحميل إعداد العمولة...";
+
   try {
     const settings = await callSettingsApi(session);
-    loginScreen.classList.add("hidden");
-    dashboardShell.classList.remove("hidden");
-    document.getElementById("admin-email").textContent = session.user.email;
     commissionInput.value = String(settings.commission);
     commissionStatus.textContent = settings.isFlat
       ? "تم تحميل العمولة المحفوظة من قاعدة البيانات."
@@ -71,10 +77,16 @@ async function enterDashboard(session) {
     saveCommissionButton.disabled = false;
     return true;
   } catch (error) {
-    await supabaseClient.auth.signOut();
-    dashboardShell.classList.add("hidden");
-    loginScreen.classList.remove("hidden");
-    setLoginMessage(error.message || "تعذّر التحقق من صلاحية المدير.");
+    // Keep the authenticated session and show the reason without enabling unsafe edits.
+    commissionStatus.textContent = error.message || "تم تسجيل الدخول، لكن تعذّر تحميل إعداد العمولة.";
+    commissionStatus.classList.add("error");
+
+    document.querySelectorAll(".nav-item").forEach((item) => {
+      item.classList.toggle("active", item.dataset.page === "commission");
+    });
+    Object.values(pages).forEach((page) => document.getElementById(page.id).classList.add("hidden"));
+    document.getElementById(pages.commission.id).classList.remove("hidden");
+    document.getElementById("page-title").textContent = pages.commission.title;
     return false;
   }
 }
