@@ -19,6 +19,19 @@ const supportEmailInput = document.getElementById("support-email");
 const supportPhoneInput = document.getElementById("support-phone");
 const supportStatus = document.getElementById("support-status");
 const saveSupportButton = document.getElementById("save-support");
+const appSettingsForm = document.getElementById("app-settings-form");
+const appSettingsStatus = document.getElementById("app-settings-status");
+const saveAppSettingsButton = document.getElementById("save-app-settings");
+const appSettingsInputs = {
+  agreement_approval_timeout_seconds: document.getElementById("setting-agreement-timeout"),
+  chat_writable_after_completion_days: document.getElementById("setting-chat-days"),
+  currency: document.getElementById("setting-currency"),
+  launch_region: document.getElementById("setting-launch-region"),
+  notification_retention_days: document.getElementById("setting-notification-days"),
+  rating_window_hours: document.getElementById("setting-rating-hours"),
+  signup_bonus_amount: document.getElementById("setting-signup-bonus"),
+  test_topup_enabled: document.getElementById("setting-test-topup")
+};
 const supabaseClient = window.supabase?.createClient(
   window.SHO_BDK_CONFIG.supabaseUrl,
   window.SHO_BDK_CONFIG.supabaseKey
@@ -37,6 +50,38 @@ document.querySelectorAll(".nav-item").forEach((button) => {
     if (selected === "users") loadUsers();
   });
 });
+
+function loadAppSettings(settings) {
+  const values = settings && typeof settings === "object" ? settings : {};
+  let complete = true;
+  Object.entries(appSettingsInputs).forEach(([key, input]) => {
+    const value = values[key];
+    if (value === null || value === undefined) {
+      input.value = "";
+      complete = false;
+    } else {
+      input.value = key === "test_topup_enabled" ? String(Boolean(value)) : String(value);
+    }
+  });
+  saveAppSettingsButton.disabled = !complete;
+  appSettingsStatus.classList.toggle("error", !complete);
+  appSettingsStatus.textContent = complete
+    ? "تم تحميل الإعدادات الحالية من قاعدة البيانات."
+    : "بعض الإعدادات غير موجودة في قاعدة البيانات؛ لم نفعّل الحفظ حتى لا ننشئ قيماً افتراضية غير مؤكدة.";
+}
+
+function readAppSettingsForm() {
+  return {
+    agreement_approval_timeout_seconds: Number(appSettingsInputs.agreement_approval_timeout_seconds.value),
+    chat_writable_after_completion_days: Number(appSettingsInputs.chat_writable_after_completion_days.value),
+    currency: appSettingsInputs.currency.value.trim().toUpperCase(),
+    launch_region: appSettingsInputs.launch_region.value.trim(),
+    notification_retention_days: Number(appSettingsInputs.notification_retention_days.value),
+    rating_window_hours: Number(appSettingsInputs.rating_window_hours.value),
+    signup_bonus_amount: Number(appSettingsInputs.signup_bonus_amount.value),
+    test_topup_enabled: appSettingsInputs.test_topup_enabled.value === "true"
+  };
+}
 
 function setLoginMessage(message, isError = true) {
   loginMessage.textContent = message || "";
@@ -69,6 +114,7 @@ async function enterDashboard(session) {
   dashboardShell.classList.add("hidden");
   commissionInput.disabled = true;
   saveCommissionButton.disabled = true;
+  saveAppSettingsButton.disabled = true;
   setLoginMessage("جارٍ التحقق من صلاحية الحساب...", false);
 
   try {
@@ -87,6 +133,7 @@ async function enterDashboard(session) {
     supportStatus.textContent = "تم تحميل معلومات التواصل المحفوظة.";
     supportStatus.classList.remove("error");
     saveSupportButton.disabled = false;
+    loadAppSettings(settings.appSettings);
     commissionInput.disabled = false;
     saveCommissionButton.disabled = false;
     return true;
@@ -115,6 +162,9 @@ async function enterDashboard(session) {
       supportStatus.textContent = "تعذّر تحميل معلومات الدعم. حدّث الصفحة وحاول مجدداً.";
       supportStatus.classList.add("error");
       saveSupportButton.disabled = true;
+      appSettingsStatus.textContent = "تعذّر تحميل إعدادات التطبيق من قاعدة البيانات. حدّث الصفحة وحاول مجدداً.";
+      appSettingsStatus.classList.add("error");
+      saveAppSettingsButton.disabled = true;
       return true;
     }
 
@@ -419,6 +469,35 @@ saveCommissionButton.addEventListener("click", async () => {
   } finally {
     saveCommissionButton.disabled = false;
     saveCommissionButton.textContent = "حفظ العمولة";
+  }
+});
+
+appSettingsForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  if (!appSettingsForm.reportValidity()) return;
+  const settings = readAppSettingsForm();
+  saveAppSettingsButton.disabled = true;
+  saveAppSettingsButton.textContent = "جارٍ الحفظ…";
+  appSettingsStatus.textContent = "جارٍ حفظ الإعدادات والتحقق منها…";
+  appSettingsStatus.classList.remove("error");
+  try {
+    const { data, error } = await supabaseClient.auth.getSession();
+    if (error || !data.session) throw new Error("انتهت جلسة الدخول. سجّل الدخول مجدداً.");
+    const saved = await callSettingsApi(data.session, "POST", { action: "app-settings", settings });
+    const verified = await callSettingsApi(data.session);
+    const actual = verified.appSettings || {};
+    if (!saved.success || !Object.entries(settings).every(([key, value]) => actual[key] === value)) {
+      throw new Error("لم يتأكد النظام من حفظ كل الإعدادات. أعد تحميلها وتحقق من القيم.");
+    }
+    loadAppSettings(actual);
+    appSettingsStatus.textContent = "تم حفظ إعدادات التطبيق والتحقق منها بنجاح.";
+    appSettingsStatus.classList.remove("error");
+  } catch (error) {
+    appSettingsStatus.textContent = error.message || "تعذّر حفظ إعدادات التطبيق.";
+    appSettingsStatus.classList.add("error");
+  } finally {
+    saveAppSettingsButton.disabled = false;
+    saveAppSettingsButton.textContent = "حفظ إعدادات التطبيق";
   }
 });
 
