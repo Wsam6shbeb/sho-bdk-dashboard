@@ -75,3 +75,15 @@
 
 .user-state-button{white-space:nowrap;padding:6px 10px;margin-inline-start:6px}
 .users-table td:last-child .user-state-button{margin-top:6px}
+
+
+/* Editable application settings */
+.app-settings-panel{max-width:1000px}
+.settings-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px 22px}
+.setting-field{display:flex;flex-direction:column;gap:7px;min-width:0}
+.setting-field label{font-size:13px;font-weight:700}
+.setting-field input,.setting-field select{width:100%;padding:11px 12px;border:1px solid #dce1eb;border-radius:10px;background:#fbfcfe;color:#182230}
+.setting-field small{font-size:11px;line-height:1.7;color:#7b8494}
+.setting-field input:focus,.setting-field select:focus{outline:none;border-color:#6b87cf;box-shadow:0 0 0 3px #e8eeff}
+.setting-field input:disabled,.setting-field select:disabled{opacity:.6;cursor:not-allowed}
+@media(max-width:650px){.settings-grid{grid-template-columns:1fr}}
