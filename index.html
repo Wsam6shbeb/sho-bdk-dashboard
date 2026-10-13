@@ -122,16 +122,16 @@
               <small>مثال: اللاذقية</small>
             </div>
             <div class="setting-field">
-              <label for="setting-currency">رمز العملة</label>
+              <div class="setting-label-row"><label for="setting-currency">رمز العملة</label><button class="setting-info-button" type="button" aria-label="معلومات عن رمز العملة" data-info-title="رمز العملة" data-info="رمز العملة المستخدم في إعدادات التطبيق، ويكتب بثلاثة أحرف لاتينية كبيرة مثل SYP. تغيير الرمز لا يحوّل الأرصدة الموجودة ولا يغيّر قيمتها العددية.">i</button></div>
               <input id="setting-currency" type="text" maxlength="3" minlength="3" pattern="[A-Z]{3}" required>
               <small>رمز من 3 أحرف كبيرة، مثل SYP</small>
             </div>
             <div class="setting-field">
-              <label for="setting-agreement-timeout">مهلة تأكيد الاتفاق (ثانية)</label>
+              <div class="setting-label-row"><label for="setting-agreement-timeout">مهلة تأكيد الاتفاق (ثانية)</label><button class="setting-info-button" type="button" aria-label="معلومات عن مهلة تأكيد الاتفاق" data-info-title="مهلة تأكيد الاتفاق" data-info="المدة المحددة بالثواني لإتمام خطوة تأكيد الاتفاق. أثر تغييرها يعتمد على عمليات التطبيق التي تقرأ هذا الإعداد، ولا يغيّر اتفاقاً تم تأكيده سابقاً.">i</button></div>
               <input id="setting-agreement-timeout" type="number" min="30" max="3600" step="1" required>
             </div>
             <div class="setting-field">
-              <label for="setting-chat-days">مدة الكتابة في المحادثة بعد الإكمال (يوم)</label>
+              <div class="setting-label-row"><label for="setting-chat-days">مدة الكتابة في المحادثة بعد الإكمال (يوم)</label><button class="setting-info-button" type="button" aria-label="معلومات عن مدة الكتابة في المحادثة" data-info-title="مدة الكتابة في المحادثة بعد الإكمال" data-info="عدد الأيام التي يُسمح خلالها بالكتابة في المحادثة بعد إكمال الخدمة، إذا كان التطبيق يطبّق هذا الإعداد. القيمة صفر تعني عدم وجود مدة سماح إضافية.">i</button></div>
               <input id="setting-chat-days" type="number" min="0" max="365" step="1" required>
             </div>
             <div class="setting-field">
