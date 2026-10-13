@@ -77,7 +77,16 @@ async function enterDashboard(session) {
     saveCommissionButton.disabled = false;
     return true;
   } catch (error) {
-    // Keep the authenticated session and show the reason without enabling unsafe edits.
+    // A forbidden email is not an authorized admin; only infrastructure/settings failures keep the session.
+    if (error.status === 403) {
+      await supabaseClient.auth.signOut();
+      dashboardShell.classList.add("hidden");
+      loginScreen.classList.remove("hidden");
+      setLoginMessage("هذا الحساب غير مخوّل لإدارة التطبيق. استخدم بريد وسام 24 المصرّح به.");
+      return false;
+    }
+
+    // Keep the authenticated session for temporary API/configuration failures.
     commissionStatus.textContent = error.message || "تم تسجيل الدخول، لكن تعذّر تحميل إعداد العمولة.";
     commissionStatus.classList.add("error");
 
