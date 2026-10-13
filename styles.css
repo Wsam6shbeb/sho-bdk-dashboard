@@ -49,3 +49,17 @@
 .user-detail-row span{color:#6b7280;flex:none}
 .user-detail-row strong{text-align:left;overflow-wrap:anywhere}
 .user-details-button{white-space:nowrap;padding:6px 10px}
+
+
+/* User details modal layout refinement */
+.user-details-modal{position:fixed!important;top:0!important;right:0!important;bottom:0!important;left:0!important;z-index:9999!important;display:grid;place-items:center;direction:rtl}
+.user-details-modal.hidden{display:none!important}
+.user-details-card{width:min(100%,560px);max-height:85vh;display:flex;flex-direction:column;gap:10px}
+.user-details-heading{width:100%;justify-content:flex-start;margin-bottom:0;padding-bottom:12px;border-bottom:1px solid #edf0f5}
+.user-details-content{width:100%;gap:0}
+.user-detail-row{display:grid;grid-template-columns:minmax(105px, 0.8fr) minmax(0,1.2fr);align-items:start;column-gap:24px;direction:rtl;padding:13px 4px}
+.user-detail-row span{line-height:1.8;white-space:normal}
+.user-detail-row strong{text-align:right;line-height:1.8;white-space:normal;overflow-wrap:anywhere;padding-inline-start:8px}
+.user-details-footer{display:flex;justify-content:center;padding-top:12px;margin-top:4px;border-top:1px solid #edf0f5}
+.user-details-footer .primary-button{min-width:140px}
+@media(max-width:480px){.user-details-card{padding:16px}.user-detail-row{grid-template-columns:minmax(90px,.85fr) minmax(0,1.15fr);column-gap:14px}}
