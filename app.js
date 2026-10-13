@@ -191,11 +191,44 @@ function renderUsers() {
     detailsButton.textContent = "عرض التفاصيل";
     detailsButton.addEventListener("click", () => showUserDetails(user));
     actionCell.appendChild(detailsButton);
+    const accountButton = document.createElement("button");
+    accountButton.type = "button";
+    accountButton.className = "secondary-button user-state-button";
+    accountButton.textContent = isUserActive(user) ? "إيقاف الحساب" : "إعادة التفعيل";
+    accountButton.addEventListener("click", () => updateUserStatus(user, accountButton));
+    if (!user.deleted_at && user.status !== "deleted" && !user.is_admin) actionCell.appendChild(accountButton);
 
     [nameCell, phoneCell, regionCell, typeCell, statusCell, providerCell, createdCell, actionCell]
       .forEach((cell) => row.appendChild(cell));
     usersTableBody.appendChild(row);
   });
+}
+
+async function updateUserStatus(user, button) {
+  const nextStatus = isUserActive(user) ? "suspended" : "active";
+  if (!window.confirm("تأكيد تغيير حالة حساب " + (user.full_name || "المستخدم") + "؟")) return;
+  button.disabled = true;
+  try {
+    const { data, error } = await supabaseClient.auth.getSession();
+    if (error || !data.session) throw new Error("انتهت جلسة الدخول. سجّل الدخول مجدداً.");
+    const response = await fetch("/api/users", {
+      method: "PATCH",
+      headers: { Authorization: "Bearer " + data.session.access_token, "Content-Type": "application/json" },
+      body: JSON.stringify({ userId: user.id, status: nextStatus }),
+      cache: "no-store"
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(result.error || "تعذّر تغيير حالة الحساب.");
+    user.status = result.status || nextStatus;
+    usersStatus.classList.remove("error");
+    usersStatus.textContent = result.message || "تم تحديث حالة الحساب.";
+    document.getElementById("active-users-total").textContent = String(cachedUsers.filter(isUserActive).length);
+    renderUsers();
+  } catch (error) {
+    usersStatus.textContent = error.message || "تعذّر تغيير حالة الحساب.";
+    usersStatus.classList.add("error");
+    button.disabled = false;
+  }
 }
 
 async function loadUsers(force = true) {
