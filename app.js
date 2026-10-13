@@ -1,5 +1,6 @@
 const pages = {
   overview: { title: "نظرة عامة", id: "overview-page" },
+  users: { title: "إدارة المستخدمين", id: "users-page" },
   settings: { title: "إعدادات التطبيق", id: "settings-page" },
   commission: { title: "العمولة", id: "commission-page" }
 };
@@ -28,6 +29,7 @@ document.querySelectorAll(".nav-item").forEach((button) => {
     Object.values(pages).forEach((page) => document.getElementById(page.id).classList.add("hidden"));
     document.getElementById(pages[selected].id).classList.remove("hidden");
     document.getElementById("page-title").textContent = pages[selected].title;
+    if (selected === "users") loadUsers();
   });
 });
 
@@ -107,6 +109,127 @@ async function enterDashboard(session) {
     return false;
   }
 }
+
+
+const usersStatus = document.getElementById("users-status");
+const usersTableBody = document.getElementById("users-table-body");
+const usersSearch = document.getElementById("users-search");
+const usersFilter = document.getElementById("users-filter");
+let cachedUsers = [];
+let usersLoaded = false;
+let usersLoading = false;
+
+function isUserActive(user) {
+  return user.status === "active" && !user.deleted_at;
+}
+
+function renderUsers() {
+  const term = usersSearch.value.trim().toLocaleLowerCase();
+  const filter = usersFilter.value;
+  const filtered = cachedUsers.filter((user) => {
+    const searchable = [user.full_name, user.phone, user.region].filter(Boolean).join(" ").toLocaleLowerCase();
+    if (term && !searchable.includes(term)) return false;
+    if (filter === "providers" && !user.is_provider) return false;
+    if (filter === "customers" && user.is_provider) return false;
+    if (filter === "active" && !isUserActive(user)) return false;
+    if (filter === "inactive" && isUserActive(user)) return false;
+    return true;
+  });
+
+  usersTableBody.replaceChildren();
+  if (filtered.length === 0) {
+    const row = document.createElement("tr");
+    const cell = document.createElement("td");
+    cell.colSpan = 7;
+    cell.className = "empty-users";
+    cell.textContent = cachedUsers.length ? "ما في حسابات مطابقة للبحث." : "ما في مستخدمين لعرضهم.";
+    row.appendChild(cell);
+    usersTableBody.appendChild(row);
+    return;
+  }
+
+  filtered.forEach((user) => {
+    const row = document.createElement("tr");
+    const nameCell = document.createElement("td");
+    const name = document.createElement("strong");
+    name.textContent = user.full_name || "اسم غير مضاف";
+    nameCell.appendChild(name);
+
+    const phoneCell = document.createElement("td");
+    phoneCell.textContent = user.phone || "—";
+    const regionCell = document.createElement("td");
+    regionCell.textContent = user.region || "—";
+    const typeCell = document.createElement("td");
+    typeCell.textContent = user.is_provider ? "مقدّم خدمة" : "مستخدم";
+
+    const statusCell = document.createElement("td");
+    const status = document.createElement("span");
+    status.className = "user-status " + (isUserActive(user) ? "status-active" : "status-inactive");
+    status.textContent = user.deleted_at ? "محذوف" : (user.status === "active" ? "فعّال" : (user.status || "غير معروف"));
+    statusCell.appendChild(status);
+
+    const providerCell = document.createElement("td");
+    if (user.provider) {
+      const rating = Number(user.provider.rating_avg);
+      const completed = Number(user.provider.completed_services_count);
+      providerCell.textContent = (Number.isFinite(rating) ? rating.toFixed(1) : "—") +
+        " / " + (Number.isFinite(completed) ? completed : 0);
+    } else {
+      providerCell.textContent = "—";
+    }
+
+    const createdCell = document.createElement("td");
+    const createdDate = user.created_at ? new Date(user.created_at) : null;
+    createdCell.textContent = createdDate && !Number.isNaN(createdDate.getTime())
+      ? createdDate.toLocaleDateString("ar")
+      : "—";
+
+    [nameCell, phoneCell, regionCell, typeCell, statusCell, providerCell, createdCell]
+      .forEach((cell) => row.appendChild(cell));
+    usersTableBody.appendChild(row);
+  });
+}
+
+async function loadUsers(force = true) {
+  if (usersLoading) return;
+  if (usersLoaded && !force) return;
+
+  usersLoading = true;
+  const refreshButton = document.getElementById("refresh-users");
+  refreshButton.disabled = true;
+  usersStatus.textContent = "جارٍ تحميل المستخدمين بأمان…";
+  usersStatus.classList.remove("error");
+
+  try {
+    const { data, error } = await supabaseClient.auth.getSession();
+    if (error || !data.session) throw new Error("انتهت جلسة الدخول. سجّل الدخول مجدداً.");
+
+    const response = await fetch("/api/users", {
+      headers: { Authorization: "Bearer " + data.session.access_token },
+      cache: "no-store"
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(result.error || "تعذّر تحميل المستخدمين.");
+
+    cachedUsers = Array.isArray(result.users) ? result.users : [];
+    usersLoaded = true;
+    document.getElementById("users-total").textContent = String(result.total ?? cachedUsers.length);
+    document.getElementById("providers-total").textContent = String(cachedUsers.filter((user) => user.is_provider).length);
+    document.getElementById("active-users-total").textContent = String(cachedUsers.filter(isUserActive).length);
+    usersStatus.textContent = "تم تحميل " + cachedUsers.length + " حساب. استخدم البحث أو التصفية للوصول للحساب المطلوب.";
+    renderUsers();
+  } catch (error) {
+    usersStatus.textContent = error.message || "تعذّر تحميل المستخدمين.";
+    usersStatus.classList.add("error");
+  } finally {
+    usersLoading = false;
+    refreshButton.disabled = false;
+  }
+}
+
+usersSearch.addEventListener("input", renderUsers);
+usersFilter.addEventListener("change", renderUsers);
+document.getElementById("refresh-users").addEventListener("click", () => loadUsers(true));
 
 googleLoginButton.addEventListener("click", async () => {
   if (!supabaseClient) {
