@@ -85,6 +85,9 @@ export async function onRequest({ request, env }) {
       }
 
       return json({
+        commissionMin: values.commission_min,
+        commissionMax: values.commission_max,
+        commissionDefault: values.commission_default,
         commission: values.commission_default,
         isFlat: values.commission_min === values.commission_max &&
           values.commission_max === values.commission_default,
@@ -185,12 +188,51 @@ export async function onRequest({ request, env }) {
       return json({ success: true, settings });
     }
 
+    if (body?.action === "commission-settings") {
+      const values = {
+        commission_min: Number(body.commissionMin),
+        commission_max: Number(body.commissionMax),
+        commission_default: Number(body.commissionDefault)
+      };
+      if (!Object.values(values).every(Number.isInteger) ||
+          Object.values(values).some(value => value < 50 || value > 1000)) {
+        return json({ error: "يجب أن تكون قيم العمولة أعداداً صحيحة بين 50 و1000 ليرة سورية جديدة." }, 400);
+      }
+      if (values.commission_min > values.commission_max ||
+          values.commission_default < values.commission_min ||
+          values.commission_default > values.commission_max) {
+        return json({ error: "يجب أن يكون الحد الأدنى أقل من أو يساوي الحد الأعلى، والعمولة الافتراضية بينهما." }, 400);
+      }
+
+      for (const [key, value] of Object.entries(values)) {
+        const response = await supabaseRequest(
+          env,
+          "/rest/v1/app_settings?key=eq." + key,
+          {
+            method: "PATCH",
+            headers: { Prefer: "return=representation" },
+            body: JSON.stringify({ value })
+          }
+        );
+        if (!response.ok) return json({ error: "تعذّر حفظ إعداد العمولة «" + key + "». أعد تحميل الإعدادات للتحقق." }, 502);
+        const rows = await response.json();
+        if (!Array.isArray(rows) || rows.length !== 1) {
+          return json({ error: "لم يتأكد النظام من حفظ إعداد العمولة «" + key + "». أعد تحميل الإعدادات للتحقق." }, 500);
+        }
+      }
+      return json({
+        success: true,
+        commissionMin: values.commission_min,
+        commissionMax: values.commission_max,
+        commissionDefault: values.commission_default
+      });
+    }
+
+    // Keep compatibility with older dashboard clients that still submit one flat commission.
     const amount = Number(body?.commission);
     if (!Number.isInteger(amount) || amount < 50 || amount > 1000) {
       return json({ error: "العمولة يجب أن تكون رقماً صحيحاً بين 50 و1000 ليرة سورية جديدة." }, 400);
     }
-
-    // One SQL update through PostgREST keeps all three flat-commission settings in sync.
     const response = await supabaseRequest(
       env,
       "/rest/v1/app_settings?key=in.(" + keys + ")",
@@ -200,14 +242,11 @@ export async function onRequest({ request, env }) {
         body: JSON.stringify({ value: amount })
       }
     );
-
     if (!response.ok) return json({ error: "لم يتم حفظ العمولة. لم نغيّر أي إعداد آخر." }, 502);
-
     const updatedRows = await response.json();
     if (!Array.isArray(updatedRows) || updatedRows.length !== 3) {
       return json({ error: "لم يتأكد النظام من تحديث إعدادات العمولة الثلاثة. افحص الإعدادات قبل إعادة المحاولة." }, 500);
     }
-
     return json({ success: true, commission: amount });
   } catch {
     return json({ error: "حدث خطأ غير متوقع أثناء الاتصال. لم يتم تأكيد الحفظ." }, 500);
