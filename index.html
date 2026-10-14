@@ -176,14 +176,25 @@
       </section>
 
       <section id="commission-page" class="page hidden">
-        <div class="section-heading"><div><h2>العمولة</h2><p>تحديد عمولة ثابتة للاتفاقات الجديدة فقط.</p></div></div>
+        <div class="section-heading"><div><h2>العمولة</h2><p>تحكّم بكل قيمة من قيم العمولة الثلاث المحفوظة في قاعدة البيانات.</p></div></div>
         <div class="panel commission-panel">
-          <div class="field-heading"><div><div class="setting-label-row"><label for="commission">العمولة لكل خدمة</label><button class="setting-info-button" type="button" aria-label="معلومات عن العمولة لكل خدمة" data-info-title="العمولة لكل خدمة" data-info="العمولة الثابتة التي تُطبّق على الاتفاقات الجديدة. عند الحفظ تُضبط القيمة الافتراضية والحد الأدنى والأعلى على الرقم نفسه. الاتفاقات السابقة تحتفظ بالقيمة المحفوظة وقتها.">i</button></div><p class="muted">سيتم ضبط الحد الأدنى والأعلى والقيمة الافتراضية على الرقم نفسه.</p></div><span class="unit">ليرة سورية جديدة</span></div>
-          <div class="input-row"><input id="commission" type="number" min="50" max="1000" step="1" value="50" inputmode="numeric"><span>ل.س جديدة</span></div>
-          <p id="commission-status" class="helper" role="status">جارٍ تحميل القيمة المحفوظة…</p>
-          <button id="save-commission" class="primary-button" type="button">حفظ العمولة</button>
+          <div class="setting-field">
+            <div class="setting-label-row"><label for="commission-min">الحد الأدنى للعمولة</label><button class="setting-info-button" type="button" aria-label="معلومات عن الحد الأدنى للعمولة" data-info-title="الحد الأدنى للعمولة" data-info="أقل قيمة مسموحة للعمولة. يجب ألا تتجاوز الحد الأعلى.">i</button></div>
+            <input id="commission-min" type="number" min="50" max="1000" step="1" value="50" inputmode="numeric">
+          </div>
+          <div class="setting-field">
+            <div class="setting-label-row"><label for="commission-max">الحد الأعلى للعمولة</label><button class="setting-info-button" type="button" aria-label="معلومات عن الحد الأعلى للعمولة" data-info-title="الحد الأعلى للعمولة" data-info="أكبر قيمة مسموحة للعمولة. يجب ألا تقل عن الحد الأدنى.">i</button></div>
+            <input id="commission-max" type="number" min="50" max="1000" step="1" value="50" inputmode="numeric">
+          </div>
+          <div class="setting-field">
+            <div class="setting-label-row"><label for="commission-default">العمولة الافتراضية</label><button class="setting-info-button" type="button" aria-label="معلومات عن العمولة الافتراضية" data-info-title="العمولة الافتراضية" data-info="القيمة الافتراضية التي يعتمدها النظام، ويجب أن تقع بين الحد الأدنى والحد الأعلى.">i</button></div>
+            <input id="commission-default" type="number" min="50" max="1000" step="1" value="50" inputmode="numeric">
+          </div>
+          <p class="muted">جميع القيم بالليرة السورية الجديدة، وكل قيمة تتحكم بالسجل المقابل لها في قاعدة البيانات.</p>
+          <p id="commission-status" class="helper" role="status">جارٍ تحميل قيم العمولة…</p>
+          <button id="save-commission" class="primary-button" type="button">حفظ قيم العمولة</button>
         </div>
-        <div class="panel note-panel"><strong>تنبيه</strong><p>الحد المسموح حالياً من 50 إلى 1000 ليرة سورية جديدة. التغيير يخص الاتفاقات الجديدة؛ الاتفاقات السابقة تحتفظ بالعمولة المحفوظة فيها.</p></div>
+        <div class="panel note-panel"><strong>تنبيه</strong><p>الحد المسموح لكل قيمة حالياً من 50 إلى 1000 ليرة سورية جديدة. الاتفاقات السابقة لا تتغير عند تعديل الإعدادات.</p></div>
       </section>
 
       <div id="setting-info-modal" class="setting-info-modal hidden" role="dialog" aria-modal="true" aria-labelledby="setting-info-title" aria-hidden="true">
