@@ -107,6 +107,7 @@ async function callSettingsApi(session, method = "GET", body) {
   if (!response.ok) {
     const error = new Error(result.error || "تعذّر الاتصال بخدمة الإعدادات.");
     error.status = response.status;
+    error.detail = result.detail || "";
     throw error;
   }
   return result;
@@ -560,7 +561,9 @@ saveSupportButton.addEventListener("click", async () => {
     supportStatus.textContent = "تم حفظ معلومات الدعم والتحقق منها بنجاح.";
     supportStatus.classList.remove("error");
   } catch (error) {
-    supportStatus.textContent = error.message || "تعذّر حفظ معلومات الدعم.";
+    supportStatus.textContent = error.detail
+      ? (error.message + " التفاصيل: " + error.detail)
+      : (error.message || "تعذّر حفظ معلومات الدعم.");
     supportStatus.classList.add("error");
   } finally {
     saveSupportButton.disabled = false;
