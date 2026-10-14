@@ -11,7 +11,9 @@ const loginButton = document.getElementById("login-button");
 const googleLoginButton = document.getElementById("google-login-button");
 const loginMessage = document.getElementById("login-message");
 const dashboardShell = document.getElementById("dashboard-shell");
-const commissionInput = document.getElementById("commission");
+const commissionMinInput = document.getElementById("commission-min");
+const commissionMaxInput = document.getElementById("commission-max");
+const commissionDefaultInput = document.getElementById("commission-default");
 const commissionStatus = document.getElementById("commission-status");
 const saveCommissionButton = document.getElementById("save-commission");
 const supportEmailInput = document.getElementById("support-email");
@@ -117,7 +119,9 @@ async function enterDashboard(session) {
   // Keep the dashboard hidden until the server confirms this account is authorized.
   loginScreen.classList.remove("hidden");
   dashboardShell.classList.add("hidden");
-  commissionInput.disabled = true;
+  commissionMinInput.disabled = true;
+  commissionMaxInput.disabled = true;
+  commissionDefaultInput.disabled = true;
   saveCommissionButton.disabled = true;
   saveAppSettingsButton.disabled = true;
   setLoginMessage("جارٍ التحقق من صلاحية الحساب...", false);
@@ -129,18 +133,20 @@ async function enterDashboard(session) {
     dashboardShell.classList.remove("hidden");
     document.getElementById("admin-email").textContent = session.user.email;
     document.querySelector("[data-page=\"users\"]").click();
-    commissionInput.value = String(settings.commission);
-    commissionStatus.textContent = settings.isFlat
-      ? "تم تحميل العمولة المحفوظة من قاعدة البيانات."
-      : "تنبيه: القيم الحالية ليست عمولة ثابتة. اضغط حفظ فقط إذا كنت تريد توحيدها على الرقم الظاهر.";
-    commissionStatus.classList.toggle("error", !settings.isFlat);
+    commissionMinInput.value = String(settings.commissionMin);
+    commissionMaxInput.value = String(settings.commissionMax);
+    commissionDefaultInput.value = String(settings.commissionDefault);
+    commissionStatus.textContent = "تم تحميل قيم العمولة الثلاث من قاعدة البيانات.";
+    commissionStatus.classList.remove("error");
     supportEmailInput.value = settings.supportEmail || "shobdkhelpcenter@gmail.com";
     supportPhoneInput.value = settings.supportPhone || "";
     supportStatus.textContent = "تم تحميل معلومات التواصل المحفوظة.";
     supportStatus.classList.remove("error");
     saveSupportButton.disabled = false;
     loadAppSettings(settings.appSettings);
-    commissionInput.disabled = false;
+    commissionMinInput.disabled = false;
+    commissionMaxInput.disabled = false;
+    commissionDefaultInput.disabled = false;
     saveCommissionButton.disabled = false;
     return true;
   } catch (error) {
@@ -159,8 +165,12 @@ async function enterDashboard(session) {
       dashboardShell.classList.remove("hidden");
       document.getElementById("admin-email").textContent = session.user.email;
       document.querySelector("[data-page=\"users\"]").click();
-      commissionInput.value = "";
-      commissionInput.disabled = true;
+      commissionMinInput.value = "";
+      commissionMaxInput.value = "";
+      commissionDefaultInput.value = "";
+      commissionMinInput.disabled = true;
+      commissionMaxInput.disabled = true;
+      commissionDefaultInput.disabled = true;
       saveCommissionButton.disabled = true;
       commissionStatus.textContent = error.message || "تعذّر تحميل العمولة من قاعدة البيانات. يمكنك استخدام لوحة التحكم، وإعداد العمولة غير متاح مؤقتاً.";
       commissionStatus.classList.add("error");
@@ -473,9 +483,17 @@ document.getElementById("logout-button").addEventListener("click", async () => {
 });
 
 saveCommissionButton.addEventListener("click", async () => {
-  const amount = Number(commissionInput.value);
-  if (!Number.isInteger(amount) || amount < 50 || amount > 1000) {
-    commissionStatus.textContent = "أدخل رقماً صحيحاً بين 50 و1000.";
+  const commissionMin = Number(commissionMinInput.value);
+  const commissionMax = Number(commissionMaxInput.value);
+  const commissionDefault = Number(commissionDefaultInput.value);
+  if (![commissionMin, commissionMax, commissionDefault].every(Number.isInteger) ||
+      [commissionMin, commissionMax, commissionDefault].some(value => value < 50 || value > 1000)) {
+    commissionStatus.textContent = "أدخل أرقاماً صحيحة من 50 إلى 1000 لكل قيمة.";
+    commissionStatus.classList.add("error");
+    return;
+  }
+  if (commissionMin > commissionMax || commissionDefault < commissionMin || commissionDefault > commissionMax) {
+    commissionStatus.textContent = "يجب أن يكون الحد الأدنى أقل من أو يساوي الحد الأعلى، والعمولة الافتراضية بينهما.";
     commissionStatus.classList.add("error");
     return;
   }
@@ -483,27 +501,30 @@ saveCommissionButton.addEventListener("click", async () => {
   saveCommissionButton.disabled = true;
   saveCommissionButton.textContent = "جارٍ الحفظ…";
   commissionStatus.classList.remove("error");
-  commissionStatus.textContent = "جارٍ حفظ الإعداد والتحقق منه…";
+  commissionStatus.textContent = "جارٍ حفظ قيم العمولة الثلاث والتحقق منها…";
 
   try {
     const { data, error } = await supabaseClient.auth.getSession();
     if (error || !data.session) throw new Error("انتهت جلسة الدخول. سجّل الدخول مجدداً.");
-
-    const saved = await callSettingsApi(data.session, "POST", { commission: amount });
+    const saved = await callSettingsApi(data.session, "POST", {
+      action: "commission-settings", commissionMin, commissionMax, commissionDefault
+    });
     const verified = await callSettingsApi(data.session);
-    if (!saved.success || verified.commission !== amount || !verified.isFlat) {
-      throw new Error("لم ينجح التحقق من القيمة بعد الحفظ. راجع الإعدادات قبل إعادة المحاولة.");
+    if (!saved.success || verified.commissionMin !== commissionMin ||
+        verified.commissionMax !== commissionMax || verified.commissionDefault !== commissionDefault) {
+      throw new Error("لم يتأكد النظام من حفظ القيم الثلاث. راجع الإعدادات قبل إعادة المحاولة.");
     }
-
-    commissionInput.value = String(verified.commission);
-    commissionStatus.textContent = "تم حفظ العمولة " + verified.commission + " والتحقق منها بنجاح. تنطبق على الاتفاقات الجديدة.";
+    commissionMinInput.value = String(verified.commissionMin);
+    commissionMaxInput.value = String(verified.commissionMax);
+    commissionDefaultInput.value = String(verified.commissionDefault);
+    commissionStatus.textContent = "تم حفظ قيم العمولة الثلاث والتحقق منها بنجاح.";
     commissionStatus.classList.remove("error");
   } catch (error) {
     commissionStatus.textContent = error.message || "تعذّر تأكيد الحفظ.";
     commissionStatus.classList.add("error");
   } finally {
     saveCommissionButton.disabled = false;
-    saveCommissionButton.textContent = "حفظ العمولة";
+    saveCommissionButton.textContent = "حفظ قيم العمولة";
   }
 });
 
