@@ -129,7 +129,13 @@ export async function onRequest({ request, env }) {
             body: JSON.stringify({ key, value })
           }
         );
-        if (!response.ok) return json({ error: "تعذّر حفظ معلومات الدعم في قاعدة البيانات." }, 502);
+        if (!response.ok) {
+          const detail = await response.text().catch(() => "");
+          return json({
+            error: "تعذّر حفظ معلومات الدعم في قاعدة البيانات.",
+            detail: detail.slice(0, 500)
+          }, 502);
+        }
         const updated = await response.json();
         if (!Array.isArray(updated) || updated.length !== 1 || updated[0].key !== key) {
           return json({ error: "لم يتم تأكيد حفظ معلومات الدعم. حدّث الصفحة وتحقق من القيم." }, 500);
