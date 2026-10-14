@@ -119,18 +119,19 @@ export async function onRequest({ request, env }) {
       if (phone.length > 40) return json({ error: "رقم الهاتف طويل جداً." }, 400);
 
       for (const [key, value] of [["support_email", email], ["support_phone", phone]]) {
+        // Upsert also creates the setting if its row is missing (for example, support_phone).
         const response = await supabaseRequest(
           env,
-          "/rest/v1/app_settings?key=eq." + key,
+          "/rest/v1/app_settings?on_conflict=key",
           {
-            method: "PATCH",
-            headers: { Prefer: "return=representation" },
-            body: JSON.stringify({ value })
+            method: "POST",
+            headers: { Prefer: "resolution=merge-duplicates,return=representation" },
+            body: JSON.stringify({ key, value })
           }
         );
         if (!response.ok) return json({ error: "تعذّر حفظ معلومات الدعم في قاعدة البيانات." }, 502);
         const updated = await response.json();
-        if (!Array.isArray(updated) || updated.length !== 1) {
+        if (!Array.isArray(updated) || updated.length !== 1 || updated[0].key !== key) {
           return json({ error: "لم يتم تأكيد حفظ معلومات الدعم. حدّث الصفحة وتحقق من القيم." }, 500);
         }
       }
