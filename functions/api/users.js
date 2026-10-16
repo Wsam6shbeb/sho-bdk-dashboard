@@ -1,38 +1,4 @@
-function json(data, status = 200) {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: {
-      "Content-Type": "application/json; charset=utf-8",
-      "Cache-Control": "no-store",
-      "X-Content-Type-Options": "nosniff"
-    }
-  });
-}
-
-async function authorize(request, env) {
-  const auth = request.headers.get("Authorization") || "";
-  const token = auth.startsWith("Bearer ") ? auth.slice(7) : "";
-  if (!token) return { error: json({ error: "يلزم تسجيل الدخول أولاً." }, 401) };
-
-  if (!env.SUPABASE_URL || !env.SUPABASE_ANON_KEY ||
-      !env.SUPABASE_SERVICE_ROLE_KEY || !env.ADMIN_EMAIL) {
-    return { error: json({ error: "إعدادات الربط الآمن غير مكتملة في Cloudflare." }, 503) };
-  }
-
-  const response = await fetch(env.SUPABASE_URL + "/auth/v1/user", {
-    headers: {
-      apikey: env.SUPABASE_ANON_KEY,
-      Authorization: "Bearer " + token
-    }
-  });
-  if (!response.ok) return { error: json({ error: "جلسة الدخول غير صالحة. سجّل الدخول مجدداً." }, 401) };
-
-  const user = await response.json();
-  if (!user.email || user.email.toLowerCase() !== env.ADMIN_EMAIL.trim().toLowerCase()) {
-    return { error: json({ error: "تعذّر تسجيل الدخول. تحقق من بياناتك وحاول مجدداً." }, 403) };
-  }
-  return { user };
-}
+import { audit, authorizeAdmin, json } from "../_lib/admin.js";
 
 async function supabaseRequest(env, path) {
   return fetch(env.SUPABASE_URL + path, {
@@ -50,7 +16,7 @@ export async function onRequest({ request, env }) {
   }
 
   try {
-    const auth = await authorize(request, env);
+    const auth = await authorizeAdmin(request, env, { requireOwner: request.method === "PATCH" });
     if (auth.error) return auth.error;
 
     if (request.method === "PATCH") {
@@ -107,6 +73,11 @@ export async function onRequest({ request, env }) {
         console.error("User status update failed:", updateResponse.status, await updateResponse.text());
         return json({ error: "تعذّر حفظ حالة الحساب في قاعدة البيانات." }, 502);
       }
+
+      await audit(env, auth.user.id, "admin_set_user_status", "user", userId, {
+        status,
+        previous_status: target.status || null
+      });
 
       // Also ban/unban the Supabase Auth account so suspended users cannot simply re-login.
       const authAdminResponse = await fetch(
