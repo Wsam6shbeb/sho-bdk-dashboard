@@ -34,7 +34,7 @@ export async function onRequest({ request, env }) {
         "signup_bonus_amount",
         "test_topup_enabled"
       ];
-      const allKeys = keys + ",support_email,support_phone," + appKeys.join(",");
+      const allKeys = keys + ",support_email,support_phone,dashboard_require_mfa," + appKeys.join(",");
       const response = await supabaseRequest(
         env,
         "/rest/v1/app_settings?select=key,value&key=in.(" + allKeys + ")"
@@ -55,6 +55,9 @@ export async function onRequest({ request, env }) {
         commission: values.commission_default,
         isFlat: values.commission_min === values.commission_max &&
           values.commission_max === values.commission_default,
+        adminRole: auth.role,
+        sessionAal: auth.aal,
+        dashboardRequireMfa: rawValues.dashboard_require_mfa === true,
         supportEmail: typeof rawValues.support_email === "string" ? rawValues.support_email : "shobdkhelpcenter@gmail.com",
         supportPhone: typeof rawValues.support_phone === "string" ? rawValues.support_phone : "",
         appSettings: Object.fromEntries([
@@ -75,6 +78,32 @@ export async function onRequest({ request, env }) {
       body = await request.json();
     } catch {
       return json({ error: "البيانات المرسلة غير صالحة." }, 400);
+    }
+
+    if (body?.action === "security") {
+      // Requiring MFA for everyone is only allowed from a session that already passed MFA (aal2),
+      // otherwise the owner could lock themselves out of the dashboard.
+      if (typeof body.requireMfa !== "boolean") {
+        return json({ error: "قيمة الإعداد غير صالحة." }, 400);
+      }
+      if (body.requireMfa && auth.aal !== "aal2") {
+        return json({ error: "سجّل جهاز التحقق بخطوتين وادخل بجلسة محقَّقة قبل إلزامه." }, 400);
+      }
+      const securityBefore = await readSettings(env, ["dashboard_require_mfa"]);
+      const saved = await supabaseRequest(env, "/rest/v1/app_settings?key=eq.dashboard_require_mfa", {
+        method: "PATCH",
+        headers: { Prefer: "return=representation" },
+        body: JSON.stringify({ value: body.requireMfa })
+      });
+      const savedRows = saved.ok ? await saved.json() : [];
+      if (!saved.ok || !Array.isArray(savedRows) || savedRows.length !== 1) {
+        return json({ error: "تعذّر حفظ إعداد الأمان في قاعدة البيانات." }, 502);
+      }
+      await audit(env, auth.user.id, "admin_update_settings", "app_settings", null, {
+        section: "security",
+        changes: changes(securityBefore, { dashboard_require_mfa: body.requireMfa })
+      });
+      return json({ success: true, dashboardRequireMfa: body.requireMfa });
     }
 
     if (body?.action === "support") {

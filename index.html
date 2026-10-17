@@ -5,7 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#111827">
   <title>لوحة تحكم شو بدك</title>
-  <link rel="stylesheet" href="./styles.css?v=3">
+  <link rel="stylesheet" href="./fonts/cairo.css">
+  <link rel="stylesheet" href="./styles.css?v=4">
 </head>
 <body>
   <section id="login-screen" class="login-screen">
@@ -13,14 +14,19 @@
       <div class="brand-mark login-mark">ش</div>
       <p class="eyebrow">لوحة الإدارة</p>
       <h1>تسجيل الدخول</h1>
-      <p class="login-description">الدخول مخصص لحساب المدير المعتمد فقط.</p>
+      <p class="login-description">الدخول مخصص لحسابات الإدارة المعتمدة فقط، عبر Google.</p>
       <button id="google-login-button" class="primary-button google-button" type="button">المتابعة باستخدام Google</button>
-      <p class="login-divider">أو الدخول بالبريد الإلكتروني</p>
-      <label for="login-email">البريد الإلكتروني</label>
-      <input id="login-email" type="email" autocomplete="username" required>
-      <label for="login-password">كلمة المرور</label>
-      <input id="login-password" type="password" autocomplete="current-password" required>
-      <button id="login-button" class="primary-button" type="submit">دخول آمن</button>
+      <div id="mfa-box" class="mfa-box hidden">
+        <h2 id="mfa-title">التحقق بخطوتين</h2>
+        <p id="mfa-hint" class="login-description"></p>
+        <div id="mfa-enroll" class="hidden">
+          <img id="mfa-qr" class="mfa-qr" alt="رمز QR لتطبيق المصادقة" width="180" height="180">
+          <p class="helper">أو أدخل المفتاح يدوياً: <code id="mfa-secret" dir="ltr"></code></p>
+        </div>
+        <label for="mfa-code">رمز التحقق (6 أرقام)</label>
+        <input id="mfa-code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}">
+        <button id="mfa-verify-button" class="primary-button" type="button">تأكيد الرمز</button>
+      </div>
       <p id="login-message" class="form-message" role="status"></p>
     </form>
   </section>
@@ -37,6 +43,8 @@
       <button class="nav-item" data-page="settings"><span>⚙</span> إعدادات التطبيق</button>
       <button class="nav-item" data-page="support"><span>✉</span> طريقة الدعم</button>
       <button class="nav-item" data-page="commission"><span>◈</span> العمولة</button>
+      <button class="nav-item" data-page="security"><span>⛨</span> الأمان</button>
+      <button class="nav-item" data-page="audit"><span>☰</span> سجل التدقيق</button>
       <div class="sidebar-bottom">
         <div class="status-dot"></div>
         <div><strong>اتصال آمن</strong><small>يتم التحقق من صلاحية المدير</small></div>
@@ -167,9 +175,9 @@
           <h3>وسائل التواصل مع الدعم</h3>
           <p class="muted">يمكنك تغيير إيميل الدعم ورقم الهاتف من هنا بأي وقت، دون تعديل كود التطبيق.</p>
           <div class="setting-label-row support-setting-label"><label for="support-email">إيميل الدعم</label><button class="setting-info-button" type="button" aria-label="معلومات عن إيميل الدعم" data-info-title="إيميل الدعم" data-info="عنوان البريد الذي يظهر للمستخدمين للتواصل مع الإدارة عند الحاجة إلى المساعدة، ومنها رسالة إيقاف الحساب مؤقتاً. تأكد من أن البريد صحيح ويمكن للإدارة استقبال الرسائل عليه.">i</button></div>
-          <input id="support-email" type="email" autocomplete="email" maxlength="254" style="display:block;width:100%;max-width:460px;margin-top:7px;padding:12px;border:1px solid #dce1eb;border-radius:10px;background:#f8fafc" value="shobdkhelpcenter@gmail.com">
+          <input id="support-email" type="email" autocomplete="email" maxlength="254" class="support-input" value="shobdkhelpcenter@gmail.com">
           <div class="setting-label-row support-setting-label"><label for="support-phone">رقم هاتف الدعم (اختياري)</label><button class="setting-info-button" type="button" aria-label="معلومات عن الهاتف" data-info-title="رقم هاتف الدعم" data-info="رقم اختياري للتواصل مع الإدارة. اتركه فارغاً إذا لم يتوفر رقم مخصص للدعم.">i</button></div>
-          <input id="support-phone" type="tel" autocomplete="tel" maxlength="40" placeholder="يمكنك إضافته لاحقاً" style="display:block;width:100%;max-width:460px;margin-top:7px;padding:12px;border:1px solid #dce1eb;border-radius:10px;background:#f8fafc">
+          <input id="support-phone" type="tel" autocomplete="tel" maxlength="40" placeholder="يمكنك إضافته لاحقاً" class="support-input">
           <p id="support-status" class="helper" role="status">جارٍ تحميل معلومات التواصل…</p>
           <button id="save-support" class="primary-button" type="button">حفظ معلومات الدعم</button>
         </div>
@@ -197,6 +205,42 @@
         <div class="panel note-panel"><strong>تنبيه</strong><p>الحد المسموح لكل قيمة حالياً من 50 إلى 1000 ليرة سورية جديدة. الاتفاقات السابقة لا تتغير عند تعديل الإعدادات.</p></div>
       </section>
 
+      <section id="security-page" class="page hidden">
+        <div class="section-heading"><div><h2>الأمان</h2><p>حماية حسابات الإدارة والدخول إلى اللوحة.</p></div></div>
+        <div class="panel commission-panel">
+          <h3>التحقق بخطوتين (TOTP)</h3>
+          <p id="security-mfa-state" class="muted">جارٍ التحقق…</p>
+          <button id="security-enroll-button" class="secondary-button hidden" type="button">تفعيل التحقق بخطوتين لحسابي</button>
+          <div class="setting-field">
+            <label for="security-require-mfa">إلزام التحقق بخطوتين لكل دخول إلى اللوحة</label>
+            <select id="security-require-mfa">
+              <option value="false">غير إلزامي</option>
+              <option value="true">إلزامي</option>
+            </select>
+            <small>لا يمكن تفعيل الإلزام إلا بعد أن تسجّل جهازك وتدخل بجلسة محقَّقة بخطوتين، حتى لا تُقفل خارج اللوحة.</small>
+          </div>
+          <p id="security-status" class="helper" role="status"></p>
+          <button id="save-security" class="primary-button" type="button">حفظ إعداد الأمان</button>
+          <p class="muted">دورك الحالي: <strong id="security-role">—</strong></p>
+        </div>
+      </section>
+
+      <section id="audit-page" class="page hidden">
+        <div class="section-heading">
+          <div><h2>سجل التدقيق</h2><p>كل إجراء إداري مسجّل: من نفّذه، ومتى، وماذا تغيّر.</p></div>
+          <button id="refresh-audit" class="secondary-button" type="button">تحديث</button>
+        </div>
+        <div class="panel users-panel">
+          <p id="audit-status" class="helper" role="status">اضغط تحديث لعرض السجل.</p>
+          <div class="users-table-wrap">
+            <table class="users-table">
+              <thead><tr><th>الوقت</th><th>المنفّذ</th><th>الإجراء</th><th>الهدف</th><th>التفاصيل</th></tr></thead>
+              <tbody id="audit-table-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
       <div id="setting-info-modal" class="setting-info-modal hidden" role="dialog" aria-modal="true" aria-labelledby="setting-info-title" aria-hidden="true">
         <div class="setting-info-card">
           <div class="setting-info-heading"><h2 id="setting-info-title">معلومات الإعداد</h2><button id="close-setting-info" class="setting-info-close" type="button" aria-label="إغلاق">×</button></div>
@@ -209,13 +253,8 @@
     </main>
   </div>
 
-  <script>
-    window.SHO_BDK_CONFIG = {
-      supabaseUrl: "https://cmflpnweojteblxrpzgq.supabase.co",
-      supabaseKey: "sb_publishable_qQmUrRVI_Uf18Nr4ayC2jA_2SSsLBbp"
-    };
-  </script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.0/dist/umd/supabase.js"></script>
-  <script src="./app.js"></script>
+  <script src="./config.js"></script>
+  <script src="./vendor/supabase.js"></script>
+  <script src="./app.js?v=2"></script>
 </body>
 </html>
