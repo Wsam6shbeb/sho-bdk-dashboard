@@ -6,16 +6,19 @@
   <meta name="theme-color" content="#111827">
   <title>لوحة تحكم شو بدك</title>
   <link rel="stylesheet" href="./fonts/cairo.css">
-  <link rel="stylesheet" href="./styles.css?v=4">
-</head>
-<body>
-  <section id="login-screen" class="login-screen">
+  <link rel="s  <section id="login-screen" class="login-screen">
     <form id="login-form" class="login-card">
       <div class="brand-mark login-mark">ش</div>
       <p class="eyebrow">لوحة الإدارة</p>
       <h1>تسجيل الدخول</h1>
-      <p class="login-description">الدخول مخصص لحسابات الإدارة المعتمدة فقط، عبر Google.</p>
+      <p class="login-description">الدخول مخصص لحساب المدير المعتمد فقط.</p>
       <button id="google-login-button" class="primary-button google-button" type="button">المتابعة باستخدام Google</button>
+      <p class="login-divider">أو الدخول بالبريد الإلكتروني</p>
+      <label for="login-email">البريد الإلكتروني</label>
+      <input id="login-email" type="email" autocomplete="username" required>
+      <label for="login-password">كلمة المرور</label>
+      <input id="login-password" type="password" autocomplete="current-password" required>
+      <button id="login-button" class="primary-button" type="submit">دخول آمن</button>
       <div id="mfa-box" class="mfa-box hidden">
         <h2 id="mfa-title">التحقق بخطوتين</h2>
         <p id="mfa-hint" class="login-description"></p>
