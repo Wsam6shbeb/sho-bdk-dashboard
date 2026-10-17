@@ -15,7 +15,7 @@ function token(claims) {
 }
 
 // Mock for the three upstream calls the authorizer makes.
-function mockFetch({ user, dbRow, mfaRequired = false, userOk = true }) {
+function mockFetch({ user, dbRow, mfaRequired = false, userOk = true, mfaOk = true }) {
   const calls = [];
   globalThis.fetch = async (url) => {
     calls.push(String(url));
@@ -27,7 +27,7 @@ function mockFetch({ user, dbRow, mfaRequired = false, userOk = true }) {
       return { ok: true, status: 200, json: async () => (dbRow ? [dbRow] : []), text: async () => "" };
     }
     if (u.includes("/rest/v1/app_settings")) {
-      return { ok: true, status: 200, json: async () => [{ value: mfaRequired }], text: async () => "" };
+      return { ok: mfaOk, status: mfaOk ? 200 : 503, json: async () => [{ value: mfaRequired }], text: async () => "settings unavailable" };
     }
     throw new Error("unexpected fetch " + u);
   };
@@ -97,6 +97,13 @@ test("MFA required: aal1 is refused with a code, aal2 passes", async () => {
   assert.equal((await low.error.json()).code, "MFA_REQUIRED");
   const high = await authorizeAdmin(req(token({ aal: "aal2" })), env);
   assert.equal(high.role, "owner");
+});
+
+test("MFA setting lookup failure is denied safely", async () => {
+  mockFetch({ user: goodUser, dbRow: { is_admin: true, status: "active" }, mfaOk: false });
+  const r = await authorizeAdmin(req(token({ aal: "aal1" })), env);
+  assert.equal(r.error.status, 503);
+  assert.equal((await r.error.json()).error.includes("إعدادات الأمان"), true);
 });
 
 test("MFA not required: aal1 passes", async () => {
