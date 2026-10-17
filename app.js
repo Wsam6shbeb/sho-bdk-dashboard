@@ -2,7 +2,9 @@ const pages = {
   users: { title: "إدارة المستخدمين", id: "users-page" },
   settings: { title: "إعدادات التطبيق", id: "settings-page" },
   support: { title: "طريقة الدعم", id: "support-page" },
-  commission: { title: "العمولة", id: "commission-page" }
+  commission: { title: "العمولة", id: "commission-page" },
+  security: { title: "الأمان", id: "security-page" },
+  audit: { title: "سجل التدقيق", id: "audit-page" }
 };
 
 const loginScreen = document.getElementById("login-screen");
@@ -54,6 +56,8 @@ document.querySelectorAll(".nav-item").forEach((button) => {
     document.getElementById(pages[selected].id).classList.remove("hidden");
     document.getElementById("page-title").textContent = pages[selected].title;
     if (selected === "users") loadUsers();
+    if (selected === "audit") loadAudit();
+    if (selected === "security") loadSecurity();
   });
 });
 
@@ -109,6 +113,7 @@ async function callSettingsApi(session, method = "GET", body) {
   if (!response.ok) {
     const error = new Error(result.error || "تعذّر الاتصال بخدمة الإعدادات.");
     error.status = response.status;
+    error.code = result.code || "";
     error.detail = result.detail || "";
     throw error;
   }
@@ -148,8 +153,14 @@ async function enterDashboard(session) {
     commissionMaxInput.disabled = false;
     commissionDefaultInput.disabled = false;
     saveCommissionButton.disabled = false;
+    applyAdminState(settings);
     return true;
   } catch (error) {
+    if (error.status === 401 && error.code === "MFA_REQUIRED") {
+      await showMfa();
+      return false;
+    }
+
     if (error.status === 403) {
       dashboardShell.classList.add("hidden");
       loginScreen.classList.remove("hidden");
@@ -439,7 +450,8 @@ googleLoginButton.addEventListener("click", async () => {
 
   const { error } = await supabaseClient.auth.signInWithOAuth({
     provider: "google",
-    options: { redirectTo: window.location.origin }
+    // بالـ / النهائية حتى يطابق قائمة السماح في Supabase (https://*.sho-bdk-dashboard.pages.dev/**)
+    options: { redirectTo: window.location.origin + "/" }
   });
 
   if (error) {
@@ -591,6 +603,194 @@ saveSupportButton.addEventListener("click", async () => {
     saveSupportButton.textContent = "حفظ معلومات الدعم";
   }
 });
+
+
+// ===================== الدور والتحقق بخطوتين =====================
+const adminState = { role: null, requireMfa: false, aal: "aal1" };
+
+function applyAdminState(settings) {
+  adminState.role = settings.adminRole || null;
+  adminState.requireMfa = Boolean(settings.dashboardRequireMfa);
+  adminState.aal = settings.sessionAal || "aal1";
+  const readOnly = adminState.role === "support";
+  [saveCommissionButton, saveAppSettingsButton, saveSupportButton, document.getElementById("save-security")]
+    .forEach((button) => {
+      if (!button) return;
+      if (readOnly) button.disabled = true;
+      button.title = readOnly ? "دور الدعم للقراءة فقط" : "";
+    });
+}
+
+const mfaBox = document.getElementById("mfa-box");
+const mfaEnrollBox = document.getElementById("mfa-enroll");
+const mfaQr = document.getElementById("mfa-qr");
+const mfaSecret = document.getElementById("mfa-secret");
+const mfaHint = document.getElementById("mfa-hint");
+const mfaCodeInput = document.getElementById("mfa-code");
+const mfaVerifyButton = document.getElementById("mfa-verify-button");
+let mfaFlow = null;
+
+async function beginMfaEnrollment() {
+  // احذف أي محاولة تسجيل سابقة لم تكتمل، وإلا قد يرفض الخادم إنشاء عامل جديد.
+  const { data: factors } = await supabaseClient.auth.mfa.listFactors();
+  for (const factor of factors?.all || []) {
+    if (factor.factor_type === "totp" && factor.status !== "verified") {
+      await supabaseClient.auth.mfa.unenroll({ factorId: factor.id });
+    }
+  }
+  const { data, error } = await supabaseClient.auth.mfa.enroll({
+    factorType: "totp",
+    friendlyName: "Dashboard " + new Date().toISOString().slice(0, 10)
+  });
+  if (error || !data) {
+    setLoginMessage("تعذّر تجهيز التحقق بخطوتين. تأكد أنه مفعّل في إعدادات Supabase Auth.");
+    return false;
+  }
+  mfaFlow = { factorId: data.id, mode: "enroll" };
+  mfaQr.src = data.totp.qr_code;
+  mfaSecret.textContent = data.totp.secret;
+  mfaEnrollBox.classList.remove("hidden");
+  mfaHint.textContent = "امسح الرمز بتطبيق مصادقة (مثل Google Authenticator) ثم أدخل الرمز المكوّن من 6 أرقام.";
+  return true;
+}
+
+async function showMfa() {
+  loginScreen.classList.remove("hidden");
+  dashboardShell.classList.add("hidden");
+  mfaBox.classList.remove("hidden");
+  mfaCodeInput.value = "";
+  setLoginMessage("");
+  const { data, error } = await supabaseClient.auth.mfa.listFactors();
+  if (error) {
+    setLoginMessage("تعذّر تحميل إعدادات التحقق بخطوتين.");
+    return;
+  }
+  const factor = (data?.totp || []).find((item) => item.status === "verified");
+  if (factor) {
+    mfaFlow = { factorId: factor.id, mode: "verify" };
+    mfaEnrollBox.classList.add("hidden");
+    mfaHint.textContent = "أدخل الرمز الظاهر في تطبيق المصادقة.";
+  } else {
+    await beginMfaEnrollment();
+  }
+  mfaCodeInput.focus();
+}
+
+mfaVerifyButton.addEventListener("click", async () => {
+  const code = mfaCodeInput.value.trim();
+  if (!/^[0-9]{6}$/.test(code) || !mfaFlow) {
+    setLoginMessage("أدخل رمزاً مكوّناً من 6 أرقام.");
+    return;
+  }
+  mfaVerifyButton.disabled = true;
+  try {
+    const challenge = await supabaseClient.auth.mfa.challenge({ factorId: mfaFlow.factorId });
+    if (challenge.error) throw challenge.error;
+    const verified = await supabaseClient.auth.mfa.verify({
+      factorId: mfaFlow.factorId,
+      challengeId: challenge.data.id,
+      code
+    });
+    if (verified.error) throw verified.error;
+    mfaBox.classList.add("hidden");
+    mfaQr.removeAttribute("src");
+    mfaSecret.textContent = "";
+    setLoginMessage("");
+    const { data } = await supabaseClient.auth.getSession();
+    if (data.session) await enterDashboard(data.session);
+  } catch {
+    setLoginMessage("الرمز غير صحيح أو انتهت صلاحيته. حاول مجدداً.");
+  } finally {
+    mfaVerifyButton.disabled = false;
+  }
+});
+
+// ===================== صفحة الأمان =====================
+async function loadSecurity() {
+  const state = document.getElementById("security-mfa-state");
+  const enrollButton = document.getElementById("security-enroll-button");
+  const requireSelect = document.getElementById("security-require-mfa");
+  document.getElementById("security-role").textContent = adminState.role === "support" ? "دعم (قراءة فقط)" : "مالك";
+  requireSelect.value = String(adminState.requireMfa);
+  const { data } = await supabaseClient.auth.mfa.listFactors();
+  const verified = (data?.totp || []).some((item) => item.status === "verified");
+  if (!verified) {
+    state.textContent = "غير مفعّل على حسابك.";
+  } else if (adminState.aal === "aal2") {
+    state.textContent = "مفعّل على حسابك، والجلسة الحالية محقَّقة بخطوتين.";
+  } else {
+    state.textContent = "مفعّل على حسابك، لكن الجلسة الحالية لم تُحقَّق بخطوتين بعد. سجّل الخروج وادخل من جديد.";
+  }
+  enrollButton.classList.toggle("hidden", verified);
+}
+
+document.getElementById("security-enroll-button").addEventListener("click", () => {
+  void showMfa();
+});
+
+document.getElementById("save-security").addEventListener("click", async () => {
+  const status = document.getElementById("security-status");
+  const requireMfa = document.getElementById("security-require-mfa").value === "true";
+  status.classList.remove("error");
+  status.textContent = "جارٍ الحفظ…";
+  try {
+    const { data, error } = await supabaseClient.auth.getSession();
+    if (error || !data.session) throw new Error("انتهت جلسة الدخول. سجّل الدخول مجدداً.");
+    const result = await callSettingsApi(data.session, "POST", { action: "security", requireMfa });
+    adminState.requireMfa = Boolean(result.dashboardRequireMfa);
+    status.textContent = adminState.requireMfa ? "تم إلزام التحقق بخطوتين لكل دخول." : "التحقق بخطوتين غير إلزامي الآن.";
+  } catch (error) {
+    status.textContent = error.message || "تعذّر حفظ إعداد الأمان.";
+    status.classList.add("error");
+  }
+});
+
+// ===================== سجل التدقيق =====================
+const AUDIT_LABELS = {
+  admin_set_user_status: "تغيير حالة مستخدم",
+  admin_update_settings: "تعديل إعدادات",
+  admin_resolve_report: "قرار في بلاغ",
+  admin_view_report_case: "عرض ملف بلاغ"
+};
+
+async function loadAudit() {
+  const status = document.getElementById("audit-status");
+  const body = document.getElementById("audit-table-body");
+  status.classList.remove("error");
+  status.textContent = "جارٍ تحميل السجل…";
+  try {
+    const { data, error } = await supabaseClient.auth.getSession();
+    if (error || !data.session) throw new Error("انتهت جلسة الدخول. سجّل الدخول مجدداً.");
+    const response = await fetch("/api/audit", { headers: { Authorization: "Bearer " + data.session.access_token } });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(result.error || "تعذّر تحميل السجل.");
+
+    body.replaceChildren();
+    for (const entry of result.entries) {
+      const row = document.createElement("tr");
+      const cells = [
+        new Date(entry.created_at).toLocaleString("ar"),
+        entry.actor_name || (entry.actor_id ? entry.actor_id.slice(0, 8) : "—"),
+        AUDIT_LABELS[entry.action] || entry.action,
+        entry.entity_type + (entry.entity_id ? " · " + entry.entity_id.slice(0, 8) : ""),
+        entry.metadata ? JSON.stringify(entry.metadata).slice(0, 600) : ""
+      ];
+      cells.forEach((text, index) => {
+        const cell = document.createElement("td");
+        cell.textContent = text;
+        if (index === 4) cell.className = "audit-details";
+        row.appendChild(cell);
+      });
+      body.appendChild(row);
+    }
+    status.textContent = result.entries.length === 0 ? "لا توجد إجراءات مسجّلة بعد." : "آخر " + result.entries.length + " إجراء.";
+  } catch (error) {
+    status.textContent = error.message || "تعذّر تحميل السجل.";
+    status.classList.add("error");
+  }
+}
+
+document.getElementById("refresh-audit").addEventListener("click", () => void loadAudit());
 
 if (!supabaseClient) {
   setLoginMessage("مكتبة تسجيل الدخول غير متاحة حالياً. تحقق من اتصال الإنترنت.");

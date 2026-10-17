@@ -1,40 +1,4 @@
-function json(data, status = 200) {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: {
-      "Content-Type": "application/json; charset=utf-8",
-      "Cache-Control": "no-store",
-      "X-Content-Type-Options": "nosniff"
-    }
-  });
-}
-
-async function authorize(request, env) {
-  const auth = request.headers.get("Authorization") || "";
-  const token = auth.startsWith("Bearer ") ? auth.slice(7) : "";
-  if (!token) return { error: json({ error: "يلزم تسجيل الدخول أولاً." }, 401) };
-
-  if (!env.SUPABASE_URL || !env.SUPABASE_ANON_KEY ||
-      !env.SUPABASE_SERVICE_ROLE_KEY || !env.ADMIN_EMAIL) {
-    return { error: json({ error: "إعدادات الربط الآمن غير مكتملة في Cloudflare." }, 503) };
-  }
-
-  const response = await fetch(env.SUPABASE_URL + "/auth/v1/user", {
-    headers: {
-      apikey: env.SUPABASE_ANON_KEY,
-      Authorization: "Bearer " + token
-    }
-  });
-
-  if (!response.ok) return { error: json({ error: "جلسة الدخول غير صالحة. سجّل الدخول مجدداً." }, 401) };
-
-  const user = await response.json();
-  if (!user.email || user.email.toLowerCase() !== env.ADMIN_EMAIL.trim().toLowerCase()) {
-    return { error: json({ error: "هذا الحساب غير مخوّل لإدارة التطبيق." }, 403) };
-  }
-
-  return { user };
-}
+import { audit, authorizeAdmin, changes, json, readSettings } from "../_lib/admin.js";
 
 async function supabaseRequest(env, path, options = {}) {
   return fetch(env.SUPABASE_URL + path, {
@@ -54,7 +18,7 @@ export async function onRequest({ request, env }) {
   }
 
   try {
-    const auth = await authorize(request, env);
+    const auth = await authorizeAdmin(request, env, { requireOwner: request.method !== "GET" });
     if (auth.error) return auth.error;
 
     const keys = "commission_min,commission_max,commission_default";
@@ -70,7 +34,7 @@ export async function onRequest({ request, env }) {
         "signup_bonus_amount",
         "test_topup_enabled"
       ];
-      const allKeys = keys + ",support_email,support_phone," + appKeys.join(",");
+      const allKeys = keys + ",support_email,support_phone,dashboard_require_mfa," + appKeys.join(",");
       const response = await supabaseRequest(
         env,
         "/rest/v1/app_settings?select=key,value&key=in.(" + allKeys + ")"
@@ -91,6 +55,9 @@ export async function onRequest({ request, env }) {
         commission: values.commission_default,
         isFlat: values.commission_min === values.commission_max &&
           values.commission_max === values.commission_default,
+        adminRole: auth.role,
+        sessionAal: auth.aal,
+        dashboardRequireMfa: rawValues.dashboard_require_mfa === true,
         supportEmail: typeof rawValues.support_email === "string" ? rawValues.support_email : "shobdkhelpcenter@gmail.com",
         supportPhone: typeof rawValues.support_phone === "string" ? rawValues.support_phone : "",
         appSettings: Object.fromEntries([
@@ -113,6 +80,32 @@ export async function onRequest({ request, env }) {
       return json({ error: "البيانات المرسلة غير صالحة." }, 400);
     }
 
+    if (body?.action === "security") {
+      // Requiring MFA for everyone is only allowed from a session that already passed MFA (aal2),
+      // otherwise the owner could lock themselves out of the dashboard.
+      if (typeof body.requireMfa !== "boolean") {
+        return json({ error: "قيمة الإعداد غير صالحة." }, 400);
+      }
+      if (body.requireMfa && auth.aal !== "aal2") {
+        return json({ error: "سجّل جهاز التحقق بخطوتين وادخل بجلسة محقَّقة قبل إلزامه." }, 400);
+      }
+      const securityBefore = await readSettings(env, ["dashboard_require_mfa"]);
+      const saved = await supabaseRequest(env, "/rest/v1/app_settings?key=eq.dashboard_require_mfa", {
+        method: "PATCH",
+        headers: { Prefer: "return=representation" },
+        body: JSON.stringify({ value: body.requireMfa })
+      });
+      const savedRows = saved.ok ? await saved.json() : [];
+      if (!saved.ok || !Array.isArray(savedRows) || savedRows.length !== 1) {
+        return json({ error: "تعذّر حفظ إعداد الأمان في قاعدة البيانات." }, 502);
+      }
+      await audit(env, auth.user.id, "admin_update_settings", "app_settings", null, {
+        section: "security",
+        changes: changes(securityBefore, { dashboard_require_mfa: body.requireMfa })
+      });
+      return json({ success: true, dashboardRequireMfa: body.requireMfa });
+    }
+
     if (body?.action === "support") {
       const email = typeof body.supportEmail === "string" ? body.supportEmail.trim() : "";
       const phone = typeof body.supportPhone === "string" ? body.supportPhone.trim() : "";
@@ -121,6 +114,7 @@ export async function onRequest({ request, env }) {
       }
       if (phone.length > 40) return json({ error: "رقم الهاتف طويل جداً." }, 400);
 
+      const supportBefore = await readSettings(env, ["support_email", "support_phone"]);
       for (const [key, value] of [["support_email", email], ["support_phone", phone]]) {
         // Upsert also creates the setting if its row is missing (for example, support_phone).
         const response = await supabaseRequest(
@@ -144,6 +138,10 @@ export async function onRequest({ request, env }) {
           return json({ error: "لم يتم تأكيد حفظ معلومات الدعم. حدّث الصفحة وتحقق من القيم." }, 500);
         }
       }
+      await audit(env, auth.user.id, "admin_update_settings", "app_settings", null, {
+        section: "support",
+        changes: changes(supportBefore, { support_email: email, support_phone: phone })
+      });
       return json({ success: true, supportEmail: email, supportPhone: phone });
     }
 
@@ -168,6 +166,7 @@ export async function onRequest({ request, env }) {
         return json({ error: "توجد قيمة غير صالحة. راجع الحقول وحدودها قبل الحفظ." }, 400);
       }
 
+      const appBefore = await readSettings(env, entries.map(([key]) => key));
       for (const [key, value] of entries) {
         const response = await supabaseRequest(
           env,
@@ -185,6 +184,10 @@ export async function onRequest({ request, env }) {
         }
       }
 
+      await audit(env, auth.user.id, "admin_update_settings", "app_settings", null, {
+        section: "app-settings",
+        changes: changes(appBefore, Object.fromEntries(entries.map(([key, value]) => [key, key === "launch_region" ? value.trim() : value])))
+      });
       return json({ success: true, settings });
     }
 
@@ -204,6 +207,7 @@ export async function onRequest({ request, env }) {
         return json({ error: "يجب أن يكون الحد الأدنى أقل من أو يساوي الحد الأعلى، والعمولة الافتراضية بينهما." }, 400);
       }
 
+      const commissionBefore = await readSettings(env, Object.keys(values));
       for (const [key, value] of Object.entries(values)) {
         const response = await supabaseRequest(
           env,
@@ -220,6 +224,10 @@ export async function onRequest({ request, env }) {
           return json({ error: "لم يتأكد النظام من حفظ إعداد العمولة «" + key + "». أعد تحميل الإعدادات للتحقق." }, 500);
         }
       }
+      await audit(env, auth.user.id, "admin_update_settings", "app_settings", null, {
+        section: "commission",
+        changes: changes(commissionBefore, values)
+      });
       return json({
         success: true,
         commissionMin: values.commission_min,
@@ -233,6 +241,7 @@ export async function onRequest({ request, env }) {
     if (!Number.isInteger(amount) || amount < 50 || amount > 1000) {
       return json({ error: "العمولة يجب أن تكون رقماً صحيحاً بين 50 و1000 ليرة سورية جديدة." }, 400);
     }
+    const legacyBefore = await readSettings(env, keys.split(","));
     const response = await supabaseRequest(
       env,
       "/rest/v1/app_settings?key=in.(" + keys + ")",
@@ -247,6 +256,10 @@ export async function onRequest({ request, env }) {
     if (!Array.isArray(updatedRows) || updatedRows.length !== 3) {
       return json({ error: "لم يتأكد النظام من تحديث إعدادات العمولة الثلاثة. افحص الإعدادات قبل إعادة المحاولة." }, 500);
     }
+    await audit(env, auth.user.id, "admin_update_settings", "app_settings", null, {
+      section: "commission-flat",
+      changes: changes(legacyBefore, Object.fromEntries(keys.split(",").map((key) => [key, amount])))
+    });
     return json({ success: true, commission: amount });
   } catch {
     return json({ error: "حدث خطأ غير متوقع أثناء الاتصال. لم يتم تأكيد الحفظ." }, 500);
