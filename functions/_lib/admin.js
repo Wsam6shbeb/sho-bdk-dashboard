@@ -82,11 +82,22 @@ export async function authorizeAdmin(request, env, { requireOwner = false } = {}
     env.SUPABASE_URL + "/rest/v1/app_settings?select=value&key=eq.dashboard_require_mfa",
     { headers: serviceHeaders(env) }
   );
-  if (mfaResponse.ok) {
-    const mfaRows = await mfaResponse.json();
-    if (Array.isArray(mfaRows) && mfaRows[0] && mfaRows[0].value === true && aal !== "aal2") {
-      return { error: json({ error: "يلزم التحقق بخطوتين.", code: "MFA_REQUIRED" }, 401) };
-    }
+  if (!mfaResponse.ok) {
+    console.error("MFA setting lookup failed:", mfaResponse.status, await mfaResponse.text());
+    return { error: json({ error: "تعذّر التحقق من إعدادات الأمان. حاول مجدداً." }, 503) };
+  }
+  let mfaRows;
+  try {
+    mfaRows = await mfaResponse.json();
+  } catch (error) {
+    console.error("MFA setting response was invalid:", error);
+    return { error: json({ error: "تعذّر التحقق من إعدادات الأمان. حاول مجدداً." }, 503) };
+  }
+  if (!Array.isArray(mfaRows)) {
+    return { error: json({ error: "تعذّر التحقق من إعدادات الأمان. حاول مجدداً." }, 503) };
+  }
+  if (mfaRows[0]?.value === true && aal !== "aal2") {
+    return { error: json({ error: "يلزم التحقق بخطوتين.", code: "MFA_REQUIRED" }, 401) };
   }
 
   if (requireOwner && role !== "owner") {
