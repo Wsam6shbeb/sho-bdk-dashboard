@@ -449,7 +449,8 @@ googleLoginButton.addEventListener("click", async () => {
 
   const { error } = await supabaseClient.auth.signInWithOAuth({
     provider: "google",
-    options: { redirectTo: window.location.origin }
+    // بالـ / النهائية حتى يطابق قائمة السماح في Supabase (https://*.sho-bdk-dashboard.pages.dev/**)
+    options: { redirectTo: window.location.origin + "/" }
   });
 
   if (error) {
