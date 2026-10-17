@@ -9,6 +9,7 @@ const pages = {
 
 const loginScreen = document.getElementById("login-screen");
 const loginForm = document.getElementById("login-form");
+const loginButton = document.getElementById("login-button");
 const googleLoginButton = document.getElementById("google-login-button");
 const loginMessage = document.getElementById("login-message");
 const dashboardShell = document.getElementById("dashboard-shell");
@@ -460,8 +461,30 @@ googleLoginButton.addEventListener("click", async () => {
   }
 });
 
-// الدخول عبر Google فقط (تم حذف الدخول بالبريد وكلمة المرور).
-loginForm.addEventListener("submit", (event) => event.preventDefault());
+loginForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  if (!supabaseClient) {
+    setLoginMessage("تعذّر تحميل مكتبة تسجيل الدخول. حدّث الصفحة وحاول مجدداً.");
+    return;
+  }
+
+  loginButton.disabled = true;
+  loginButton.textContent = "جارٍ التحقق…";
+  setLoginMessage("");
+
+  const email = document.getElementById("login-email").value.trim();
+  const password = document.getElementById("login-password").value;
+  const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+
+  if (error || !data.session) {
+    setLoginMessage("تعذّر تسجيل الدخول. تأكد من البريد الإلكتروني وكلمة المرور.");
+  } else {
+    await enterDashboard(data.session);
+  }
+
+  loginButton.disabled = false;
+  loginButton.textContent = "دخول آمن";
+});
 
 document.getElementById("logout-button").addEventListener("click", async () => {
   if (supabaseClient) await supabaseClient.auth.signOut();
