@@ -13,3 +13,8 @@
 
 /api/*
   Cache-Control: no-store
+
+# الرابط العام لبيانات الدعم يقرؤه التطبيق من أصل مختلف: لا نفرض عليه سياسات same-origin
+/api/public-support
+  ! Cross-Origin-Resource-Policy
+  ! Cross-Origin-Opener-Policy
