@@ -1,3 +1,4 @@
+
 <!doctype html>
 <html lang="ar" dir="rtl">
 <head>
@@ -6,7 +7,10 @@
   <meta name="theme-color" content="#111827">
   <title>لوحة تحكم شو بدك</title>
   <link rel="stylesheet" href="./fonts/cairo.css">
-  <link rel="s  <section id="login-screen" class="login-screen">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <section id="login-screen" class="login-screen">
     <form id="login-form" class="login-card">
       <div class="brand-mark login-mark">ش</div>
       <p class="eyebrow">لوحة الإدارة</p>
@@ -133,7 +137,7 @@
               <small>مثال: اللاذقية</small>
             </div>
             <div class="setting-field">
-              <div class="setting-label-row"><label for="setting-currency">رمز العملة</label><button class="setting-info-button" type="button" aria-label="معلومات عن رمز العملة" data-info-title="رمز العملة" data-info="رمز العملة المستخدم في إعدادات التطبيق، ويكتب بثلاثة أحرف لاتينية كبيرة مثل SYP. تغيير الرمز لا يحوّل الأرصدة الموجودة ولا يغيّر قيمتها العددية.">i</button></div>
+              <div class="setting-label-row"><label for="setting-currency">رمز العملة</label><button class="setting-info-button" type="button" aria-label="معلومات عن رمز العملة" data-info-title="معلومات عن رمز العملة" data-info="رمز العملة المستخدم في إعدادات التطبيق، ويكتب بثلاثة أحرف لاتينية كبيرة مثل SYP. تغيير الرمز لا يحوّل الأرصدة الموجودة ولا يغيّر قيمتها العددية.">i</button></div>
               <input id="setting-currency" type="text" maxlength="3" minlength="3" pattern="[A-Z]{3}" required>
               <small>رمز من 3 أحرف كبيرة، مثل SYP</small>
             </div>
@@ -179,7 +183,7 @@
           <p class="muted">يمكنك تغيير إيميل الدعم ورقم الهاتف من هنا بأي وقت، دون تعديل كود التطبيق.</p>
           <div class="setting-label-row support-setting-label"><label for="support-email">إيميل الدعم</label><button class="setting-info-button" type="button" aria-label="معلومات عن إيميل الدعم" data-info-title="إيميل الدعم" data-info="عنوان البريد الذي يظهر للمستخدمين للتواصل مع الإدارة عند الحاجة إلى المساعدة، ومنها رسالة إيقاف الحساب مؤقتاً. تأكد من أن البريد صحيح ويمكن للإدارة استقبال الرسائل عليه.">i</button></div>
           <input id="support-email" type="email" autocomplete="email" maxlength="254" class="support-input" value="shobdkhelpcenter@gmail.com">
-          <div class="setting-label-row support-setting-label"><label for="support-phone">رقم هاتف الدعم (اختياري)</label><button class="setting-info-button" type="button" aria-label="معلومات عن الهاتف" data-info-title="رقم هاتف الدعم" data-info="رقم اختياري للتواصل مع الإدارة. اتركه فارغاً إذا لم يتوفر رقم مخصص للدعم.">i</button></div>
+          <div class="setting-label-row support-setting-label"><label for="support-phone">رقم هاتف الدعم (اختياري)</label><button class="setting-info-button" type="button" aria-label="معلومات عن الهاتف" data-info-title="معلومات عن الهاتف" data-info="رقم اختياري للتواصل مع الإدارة. اتركه فارغاً إذا لم يتوفر رقم مخصص للدعم.">i</button></div>
           <input id="support-phone" type="tel" autocomplete="tel" maxlength="40" placeholder="يمكنك إضافته لاحقاً" class="support-input">
           <p id="support-status" class="helper" role="status">جارٍ تحميل معلومات التواصل…</p>
           <button id="save-support" class="primary-button" type="button">حفظ معلومات الدعم</button>
@@ -194,7 +198,7 @@
             <input id="commission-min" type="number" min="50" max="1000" step="1" value="50" inputmode="numeric">
           </div>
           <div class="setting-field">
-            <div class="setting-label-row"><label for="commission-max">الحد الأعلى للعمولة</label><button class="setting-info-button" type="button" aria-label="معلومات عن الحد الأعلى للعمولة" data-info-title="الحد الأعلى للعمولة" data-info="أكبر قيمة مسموحة للعمولة. يجب ألا تقل عن الحد الأدنى.">i</button></div>
+            <div class="setting-label-row"><label for="commission-max">الحد الأعلى للعمولة</label><button class="setting-info-button" type="button" aria-label="معلومات عن الحد الأعلى للعمولة" data-info-title="معلومات عن الحد الأعلى للعمولة" data-info="أكبر قيمة مسموحة للعمولة. يجب ألا تقل عن الحد الأدنى.">i</button></div>
             <input id="commission-max" type="number" min="50" max="1000" step="1" value="50" inputmode="numeric">
           </div>
           <div class="setting-field">
