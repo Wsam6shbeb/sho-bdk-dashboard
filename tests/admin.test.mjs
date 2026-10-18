@@ -90,12 +90,14 @@ test("legacy ADMIN_EMAIL fallback works only when configured and matches", async
   assert.equal(r.role, "owner");
 });
 
-test("ADMIN_EMAIL recovery does not bypass an existing suspended or deleted row", async () => {
-  const withLegacy = { ...env, ADMIN_EMAIL: " A@B.co " };
+test("primary owner access survives suspended, deleted, or missing app user row", async () => {
+  const withOwner = { ...env, ADMIN_EMAIL: " A@B.co " };
   mockFetch({ user: goodUser, dbRow: { is_admin: true, status: "suspended" } });
-  assert.equal((await authorizeAdmin(req(token({})), withLegacy)).error.status, 403);
-  mockFetch({ user: goodUser, dbRow: { is_admin: true, status: "active", deleted_at: "2026-01-01" } });
-  assert.equal((await authorizeAdmin(req(token({})), withLegacy)).error.status, 403);
+  assert.equal((await authorizeAdmin(req(token({})), withOwner, { requireOwner: true })).role, "owner");
+  mockFetch({ user: goodUser, dbRow: { is_admin: false, status: "active", deleted_at: "2026-01-01" } });
+  assert.equal((await authorizeAdmin(req(token({})), withOwner, { requireOwner: true })).role, "owner");
+  mockFetch({ user: goodUser, dbRow: null });
+  assert.equal((await authorizeAdmin(req(token({})), withOwner, { requireOwner: true })).role, "owner");
 });
 
 test("MFA required: aal1 is refused with a code, aal2 passes", async () => {
