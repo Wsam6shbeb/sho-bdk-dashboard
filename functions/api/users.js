@@ -47,11 +47,16 @@ export async function onRequest({ request, env }) {
       const targets = await targetResponse.json();
       const target = Array.isArray(targets) ? targets[0] : null;
       if (!target) return json({ error: "المستخدم غير موجود." }, 404);
+      const isPrimaryOwner = Boolean(
+        env.ADMIN_EMAIL && typeof target.email === "string" &&
+        target.email.toLowerCase() === env.ADMIN_EMAIL.trim().toLowerCase()
+      );
+      // احمِ المالك الأساسي حتى لو عُطّلت is_admin أو تغيّرت حالة سجلّه.
+      if (isPrimaryOwner || target.is_admin || userId === auth.user.id) {
+        return json({ error: "لا يمكن إيقاف حساب المالك الأساسي أو أي حساب مدير." }, 403);
+      }
       if (target.deleted_at || target.status === "deleted") {
         return json({ error: "لا يمكن تغيير حالة حساب محذوف." }, 409);
-      }
-      if (target.is_admin || userId === auth.user.id) {
-        return json({ error: "لا يمكن إيقاف حساب المدير أو حسابك الحالي." }, 403);
       }
       // Even when the database already has this status, continue below to sync
       // the Supabase Auth ban state. A previous attempt may have updated the row
