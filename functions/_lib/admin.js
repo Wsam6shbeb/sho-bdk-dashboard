@@ -59,19 +59,26 @@ export async function authorizeAdmin(request, env, { requireOwner = false } = {}
 
   // الصلاحية من قاعدة البيانات: users.is_admin (+ admin_role: owner | support)
   let role = null;
+  let userRow = null;
+  let userRowLookupSucceeded = false;
   const rowsResponse = await fetch(
     env.SUPABASE_URL + "/rest/v1/users?select=is_admin,admin_role,status,deleted_at&id=eq." + encodeURIComponent(user.id),
     { headers: serviceHeaders(env) }
   );
   if (rowsResponse.ok) {
+    userRowLookupSucceeded = true;
     const rows = await rowsResponse.json();
-    const row = Array.isArray(rows) ? rows[0] : null;
-    if (row && row.is_admin === true && !row.deleted_at && (row.status == null || row.status === "active")) {
-      role = row.admin_role === "support" ? "support" : "owner";
+    userRow = Array.isArray(rows) ? rows[0] || null : null;
+    if (userRow && userRow.is_admin === true && !userRow.deleted_at && (userRow.status == null || userRow.status === "active")) {
+      role = userRow.admin_role === "support" ? "support" : "owner";
     }
   }
-  // مسار قديم مؤقت: إيميل المدير من متغير البيئة. احذف ADMIN_EMAIL بعد ضبط is_admin بقاعدة البيانات.
-  if (!role && env.ADMIN_EMAIL && user.email.toLowerCase() === env.ADMIN_EMAIL.trim().toLowerCase()) {
+
+  // الاسترداد عبر ADMIN_EMAIL مسموح فقط إذا لم يعد لسجل المستخدم وجود في public.users.
+  // إذا كان السجل موجوداً لكنه موقوف/محذوف منطقياً أو سُحبت صلاحياته، لا نتجاوز قرار قاعدة البيانات.
+  // وإذا تعذّرت قراءة قاعدة البيانات، نرفض الدخول بدلاً من فتح مسار احتياطي غير موثوق.
+  if (!role && userRowLookupSucceeded && !userRow && env.ADMIN_EMAIL &&
+      user.email.toLowerCase() === env.ADMIN_EMAIL.trim().toLowerCase()) {
     role = "owner";
   }
   if (!role) return { error: DENIED() };
