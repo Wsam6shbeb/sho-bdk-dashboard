@@ -95,39 +95,27 @@ export async function onRequest({ request, env }) {
       return json({ error: "اكتب سبب الرفض قبل حفظ القرار." }, 400);
     }
 
-    const lookup = await rest(env, "/rest/v1/verifications?select=id,user_id,status&id=eq." + encodeURIComponent(id) + "&limit=1");
-    if (!lookup.ok) return json({ error: "تعذّر التحقق من طلب التوثيق." }, 502);
-    const matches = await lookup.json();
-    const target = matches[0];
-    if (!target) return json({ error: "طلب التوثيق غير موجود." }, 404);
-    if (target.status !== "pending") return json({ error: "تمت مراجعة هذا الطلب مسبقاً؛ حدّث القائمة." }, 409);
-
-    const now = new Date().toISOString();
-    const update = await rest(env, "/rest/v1/verifications?id=eq." + encodeURIComponent(id) + "&status=eq.pending", {
-      method: "PATCH",
+    // Update the request and public.users status inside one Postgres transaction.
+    const decision = await rest(env, "/rest/v1/rpc/review_verification_request", {
+      method: "POST",
       headers: { Prefer: "return=representation" },
       body: JSON.stringify({
-        status,
-        rejection_reason: status === "rejected" ? rejectionReason : null,
-        reviewed_by: auth.user.id,
-        reviewed_at: now
+        p_verification_id: id,
+        p_status: status,
+        p_rejection_reason: status === "rejected" ? rejectionReason : null,
+        p_reviewed_by: auth.user.id
       })
     });
-    if (!update.ok) {
-      console.error("Verification decision failed:", update.status, await update.text());
-      return json({ error: "تعذّر حفظ قرار المراجعة." }, 502);
-    }
-    const updatedRows = await update.json();
-    if (!updatedRows.length) return json({ error: "تمت مراجعة هذا الطلب من جلسة أخرى؛ حدّث القائمة." }, 409);
-
-    const userUpdate = await rest(
-      env,
-      "/rest/v1/users?id=eq." + encodeURIComponent(target.user_id),
-      { method: "PATCH", body: JSON.stringify({ verification_status: status }) }
-    );
-    if (!userUpdate.ok) {
-      console.error("User verification status sync failed:", userUpdate.status, await userUpdate.text());
-      return json({ error: "حُفظ قرار الطلب لكن تعذّر تحديث حالة المستخدم؛ يلزم إصلاح المزامنة قبل المتابعة." }, 502);
+    if (!decision.ok) {
+      const detail = await decision.text();
+      console.error("Atomic verification decision failed:", decision.status, detail);
+      if (decision.status === 404 || detail.includes("P0002") || detail.includes("not found or already reviewed")) {
+        return json({ error: "الطلب غير موجود أو تمت مراجعته مسبقاً؛ حدّث القائمة." }, 409);
+      }
+      if (detail.includes("A rejection reason is required")) {
+        return json({ error: "اكتب سبب الرفض قبل حفظ القرار." }, 400);
+      }
+      return json({ error: "تعذّر حفظ قرار التوثيق وتحديث حالة المستخدم. لم يُحفظ أي جزء من القرار." }, 502);
     }
 
     await audit(env, auth.user.id, status === "approved" ? "admin_approve_verification" : "admin_reject_verification", "verification", id, {
