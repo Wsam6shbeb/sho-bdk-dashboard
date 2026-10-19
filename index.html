@@ -47,6 +47,7 @@
       <div class="side-label">القائمة الرئيسية</div>
       <button class="nav-item active" data-page="overview"><span>▦</span> نظرة عامة</button>
       <button class="nav-item" data-page="users"><span>♙</span> إدارة المستخدمين</button>
+      <button class="nav-item" data-page="verifications"><span>✓</span> طلبات التوثيق</button>
       <button class="nav-item" data-page="settings"><span>⚙</span> إعدادات التطبيق</button>
       <button class="nav-item" data-page="support"><span>✉</span> طريقة الدعم</button>
       <button class="nav-item" data-page="commission"><span>◈</span> العمولة</button>
@@ -126,6 +127,22 @@
           </div>
         </div>
       </div>
+
+      <section id="verifications-page" class="page hidden">
+        <div class="section-heading">
+          <div><h2>طلبات التوثيق</h2><p>صور الهوية والسيلفي لا تظهر إلا للمالك المخوّل، وروابط الصور مؤقتة.</p></div>
+          <button id="refresh-verifications" class="secondary-button" type="button">تحديث الطلبات</button>
+        </div>
+        <div class="panel users-panel">
+          <p id="verifications-status" class="helper" role="status">اضغط تحديث لتحميل الطلبات المعلّقة.</p>
+          <div class="users-table-wrap">
+            <table class="users-table">
+              <thead><tr><th>المستخدم</th><th>تاريخ الطلب</th><th>صورة الهوية</th><th>السيلفي</th><th>القرار</th></tr></thead>
+              <tbody id="verifications-table-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
 
       <section id="settings-page" class="page hidden">
         <div class="section-heading"><div><h2>إعدادات التطبيق</h2><p>عدّل القيم العامة المستخدمة في التطبيق، وسيتم حفظها في قاعدة البيانات.</p></div></div>
