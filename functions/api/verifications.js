@@ -118,8 +118,15 @@ export async function onRequest({ request, env }) {
       return json({ error: "تعذّر حفظ قرار التوثيق وتحديث حالة المستخدم. لم يُحفظ أي جزء من القرار." }, 502);
     }
 
+    const decisionRows = await decision.json().catch(() => []);
+    const decided = Array.isArray(decisionRows) ? decisionRows[0] : null;
+    if (!decided?.user_id) {
+      console.error("Atomic verification decision returned an unexpected response.");
+      return json({ error: "تم حفظ القرار، لكن تعذّر تأكيد نتيجة العملية. حدّث القائمة قبل المتابعة." }, 502);
+    }
+
     await audit(env, auth.user.id, status === "approved" ? "admin_approve_verification" : "admin_reject_verification", "verification", id, {
-      user_id: target.user_id,
+      user_id: decided.user_id,
       rejection_reason: status === "rejected" ? rejectionReason : null
     });
     return json({ success: true, id, status });
