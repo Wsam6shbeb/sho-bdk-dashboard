@@ -615,6 +615,8 @@ function applyAdminState(settings) {
   adminState.requireMfa = Boolean(settings.dashboardRequireMfa);
   adminState.aal = settings.sessionAal || "aal1";
   const readOnly = adminState.role === "support";
+  const verificationNav = document.querySelector('[data-page="verifications"]');
+  if (verificationNav) verificationNav.classList.toggle("hidden", readOnly);
   [saveCommissionButton, saveAppSettingsButton, saveSupportButton, document.getElementById("save-security")]
     .forEach((button) => {
       if (!button) return;
