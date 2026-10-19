@@ -1,5 +1,6 @@
 const pages = {
   users: { title: "إدارة المستخدمين", id: "users-page" },
+  verifications: { title: "طلبات التوثيق", id: "verifications-page" },
   settings: { title: "إعدادات التطبيق", id: "settings-page" },
   support: { title: "طريقة الدعم", id: "support-page" },
   commission: { title: "العمولة", id: "commission-page" },
@@ -56,6 +57,7 @@ document.querySelectorAll(".nav-item").forEach((button) => {
     document.getElementById(pages[selected].id).classList.remove("hidden");
     document.getElementById("page-title").textContent = pages[selected].title;
     if (selected === "users") loadUsers();
+    if (selected === "verifications") loadVerifications();
     if (selected === "audit") loadAudit();
     if (selected === "security") loadSecurity();
   });
@@ -746,6 +748,109 @@ document.getElementById("save-security").addEventListener("click", async () => {
 });
 
 // ===================== سجل التدقيق =====================
+async function loadVerifications() {
+  const status = document.getElementById("verifications-status");
+  const body = document.getElementById("verifications-table-body");
+  status.classList.remove("error");
+  status.textContent = "جارٍ تحميل طلبات التوثيق…";
+  try {
+    const { data, error } = await supabaseClient.auth.getSession();
+    if (error || !data.session) throw new Error("انتهت جلسة الدخول. سجّل الدخول مجدداً.");
+    const response = await fetch("/api/verifications", {
+      headers: { Authorization: "Bearer " + data.session.access_token }
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(result.error || "تعذّر تحميل طلبات التوثيق.");
+
+    body.replaceChildren();
+    for (const entry of result.entries || []) {
+      const row = document.createElement("tr");
+      const user = entry.user || {};
+      const identity = [user.full_name, user.phone, user.region].filter(Boolean).join(" · ") || entry.user_id;
+      const userCell = document.createElement("td");
+      userCell.textContent = identity;
+      row.appendChild(userCell);
+
+      const dateCell = document.createElement("td");
+      dateCell.textContent = new Date(entry.created_at).toLocaleString("ar-SY");
+      row.appendChild(dateCell);
+
+      const addPhotoCell = (url, label) => {
+        const cell = document.createElement("td");
+        if (url) {
+          const link = document.createElement("a");
+          link.href = url;
+          link.target = "_blank";
+          link.rel = "noopener noreferrer";
+          link.textContent = label;
+          link.className = "secondary-button";
+          cell.appendChild(link);
+        } else {
+          cell.textContent = "تعذّر تجهيز رابط آمن";
+        }
+        row.appendChild(cell);
+      };
+      addPhotoCell(entry.id_photo_url, "عرض الهوية");
+      addPhotoCell(entry.selfie_url, "عرض السيلفي");
+
+      const actionCell = document.createElement("td");
+      if (entry.status === "pending") {
+        const approve = document.createElement("button");
+        approve.type = "button";
+        approve.className = "primary-button";
+        approve.textContent = "قبول";
+        approve.addEventListener("click", () => void decideVerification(entry.id, "approved"));
+        const reject = document.createElement("button");
+        reject.type = "button";
+        reject.className = "secondary-button";
+        reject.textContent = "رفض";
+        reject.style.marginInlineStart = "8px";
+        reject.addEventListener("click", () => void decideVerification(entry.id, "rejected"));
+        actionCell.append(approve, reject);
+      } else {
+        actionCell.textContent = entry.status === "approved" ? "مقبول" : "مرفوض";
+      }
+      row.appendChild(actionCell);
+      body.appendChild(row);
+    }
+    status.textContent = result.entries?.length ? "عدد الطلبات المعروضة: " + result.entries.length : "لا توجد طلبات توثيق معلّقة حالياً.";
+  } catch (error) {
+    status.textContent = error.message || "تعذّر تحميل طلبات التوثيق.";
+    status.classList.add("error");
+  }
+}
+
+async function decideVerification(id, decision) {
+  let rejectionReason = "";
+  if (decision === "rejected") {
+    rejectionReason = window.prompt("اكتب سبب رفض التوثيق ليظهر للمستخدم:")?.trim() || "";
+    if (!rejectionReason) return;
+  }
+  const status = document.getElementById("verifications-status");
+  status.classList.remove("error");
+  status.textContent = "جارٍ حفظ القرار…";
+  try {
+    const { data, error } = await supabaseClient.auth.getSession();
+    if (error || !data.session) throw new Error("انتهت جلسة الدخول. سجّل الدخول مجدداً.");
+    const response = await fetch("/api/verifications", {
+      method: "PATCH",
+      headers: {
+        Authorization: "Bearer " + data.session.access_token,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ id, status: decision, rejectionReason })
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(result.error || "تعذّر حفظ القرار.");
+    await loadVerifications();
+  } catch (error) {
+    status.textContent = error.message || "تعذّر حفظ القرار.";
+    status.classList.add("error");
+  }
+}
+
+document.getElementById("refresh-verifications").addEventListener("click", () => void loadVerifications());
+
 const AUDIT_LABELS = {
   admin_set_user_status: "تغيير حالة مستخدم",
   admin_update_settings: "تعديل إعدادات",
