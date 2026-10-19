@@ -855,6 +855,8 @@ const AUDIT_LABELS = {
   admin_set_user_status: "تغيير حالة مستخدم",
   admin_update_settings: "تعديل إعدادات",
   admin_resolve_report: "قرار في بلاغ",
+  admin_approve_verification: "قبول توثيق حساب",
+  admin_reject_verification: "رفض توثيق حساب",
   admin_view_report_case: "عرض ملف بلاغ"
 };
 
