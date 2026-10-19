@@ -45,7 +45,7 @@ export async function onRequest({ request, env }) {
     if (request.method === "GET") {
       const response = await rest(
         env,
-        "/rest/v1/verifications?select=id,user_id,id_document_url,selfie_url,status,rejection_reason,created_at,reviewed_at&order=created_at.desc&limit=100"
+        "/rest/v1/verifications?select=id,user_id,id_document_url,selfie_url,status,rejection_reason,created_at,reviewed_at&status=eq.pending&order=created_at.desc&limit=100"
       );
       if (!response.ok) {
         console.error("Verification list failed:", response.status, await response.text());
