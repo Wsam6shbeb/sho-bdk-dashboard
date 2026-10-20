@@ -15,7 +15,7 @@ const loginMessage = document.getElementById("login-message");
 const dashboardShell = document.getElementById("dashboard-shell");
 const commissionMinInput = document.getElementById("commission-min");
 const commissionMaxInput = document.getElementById("commission-max");
-const commissionDefaultInput = document.getElementById("commission-default");
+const commissionPercentInput = document.getElementById("commission-percent");
 const commissionStatus = document.getElementById("commission-status");
 const saveCommissionButton = document.getElementById("save-commission");
 const supportEmailInput = document.getElementById("support-email");
@@ -126,7 +126,7 @@ async function enterDashboard(session) {
   dashboardShell.classList.add("hidden");
   commissionMinInput.disabled = true;
   commissionMaxInput.disabled = true;
-  commissionDefaultInput.disabled = true;
+  commissionPercentInput.disabled = true;
   saveCommissionButton.disabled = true;
   saveAppSettingsButton.disabled = true;
   setLoginMessage("جارٍ التحقق من صلاحية الحساب...", false);
@@ -140,8 +140,8 @@ async function enterDashboard(session) {
     document.querySelector("[data-page=\"users\"]").click();
     commissionMinInput.value = String(settings.commissionMin);
     commissionMaxInput.value = String(settings.commissionMax);
-    commissionDefaultInput.value = String(settings.commissionDefault);
-    commissionStatus.textContent = "تم تحميل قيم العمولة الثلاث من قاعدة البيانات.";
+    commissionPercentInput.value = String(settings.commissionPercent ?? 5);
+    commissionStatus.textContent = "تم تحميل إعدادات العمولة من قاعدة البيانات.";
     commissionStatus.classList.remove("error");
     supportEmailInput.value = settings.supportEmail || "shobdkhelpcenter@gmail.com";
     supportPhoneInput.value = settings.supportPhone || "";
@@ -151,7 +151,7 @@ async function enterDashboard(session) {
     loadAppSettings(settings.appSettings);
     commissionMinInput.disabled = false;
     commissionMaxInput.disabled = false;
-    commissionDefaultInput.disabled = false;
+    commissionPercentInput.disabled = false;
     saveCommissionButton.disabled = false;
     applyAdminState(settings);
     return true;
@@ -178,10 +178,10 @@ async function enterDashboard(session) {
       document.querySelector("[data-page=\"users\"]").click();
       commissionMinInput.value = "";
       commissionMaxInput.value = "";
-      commissionDefaultInput.value = "";
+      commissionPercentInput.value = "";
       commissionMinInput.disabled = true;
       commissionMaxInput.disabled = true;
-      commissionDefaultInput.disabled = true;
+      commissionPercentInput.disabled = true;
       saveCommissionButton.disabled = true;
       commissionStatus.textContent = error.message || "تعذّر تحميل العمولة من قاعدة البيانات. يمكنك استخدام لوحة التحكم، وإعداد العمولة غير متاح مؤقتاً.";
       commissionStatus.classList.add("error");
@@ -211,31 +211,32 @@ const usersFilter = document.getElementById("users-filter");
 let cachedUsers = [];
 let usersLoaded = false;
 let usersLoading = false;
+let usersPage = 1;
+let usersTotal = 0;
+const USERS_PAGE_SIZE = 25;
+let usersSearchTimer = null;
+
+// التقييم العام الموحّد: "جديد" إذا لا توجد تقييمات حقيقية بعد، وإلا الرقم مع العدد.
+function formatUserRating(user) {
+  const count = Number(user.rating_count ?? 0);
+  if (count === 0) return "جديد";
+  const avg = Number(user.rating_avg);
+  return (Number.isFinite(avg) ? avg.toFixed(1) : "—") + " (" + count + ")";
+}
 
 function isUserActive(user) {
   return user.status === "active" && !user.deleted_at;
 }
 
 function renderUsers() {
-  const term = usersSearch.value.trim().toLocaleLowerCase();
-  const filter = usersFilter.value;
-  const filtered = cachedUsers.filter((user) => {
-    const searchable = [user.full_name, user.phone, user.region].filter(Boolean).join(" ").toLocaleLowerCase();
-    if (term && !searchable.includes(term)) return false;
-    if (filter === "providers" && !user.is_provider) return false;
-    if (filter === "customers" && user.is_provider) return false;
-    if (filter === "active" && !isUserActive(user)) return false;
-    if (filter === "inactive" && isUserActive(user)) return false;
-    return true;
-  });
-
+  const filtered = cachedUsers;
   usersTableBody.replaceChildren();
   if (filtered.length === 0) {
     const row = document.createElement("tr");
     const cell = document.createElement("td");
     cell.colSpan = 8;
     cell.className = "empty-users";
-    cell.textContent = cachedUsers.length ? "ما في حسابات مطابقة للبحث." : "ما في مستخدمين لعرضهم.";
+    cell.textContent = (usersSearch.value.trim() || usersFilter.value !== "all") ? "ما في حسابات مطابقة للبحث." : "ما في مستخدمين لعرضهم.";
     row.appendChild(cell);
     usersTableBody.appendChild(row);
     return;
@@ -262,14 +263,9 @@ function renderUsers() {
     statusCell.appendChild(status);
 
     const providerCell = document.createElement("td");
-    if (user.provider) {
-      const rating = Number(user.provider.rating_avg);
-      const completed = Number(user.provider.completed_services_count);
-      providerCell.textContent = (Number.isFinite(rating) ? rating.toFixed(1) : "—") +
-        " / " + (Number.isFinite(completed) ? completed : 0);
-    } else {
-      providerCell.textContent = "—";
-    }
+    const completed = user.provider ? Number(user.provider.completed_services_count) : null;
+    providerCell.textContent = formatUserRating(user) +
+      (user.is_provider && completed !== null ? " / " + (Number.isFinite(completed) ? completed : 0) : "");
 
     const createdCell = document.createElement("td");
     const createdDate = user.created_at ? new Date(user.created_at) : null;
@@ -313,10 +309,9 @@ async function updateUserStatus(user, button) {
     const result = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(result.error || "تعذّر تغيير حالة الحساب.");
     user.status = result.status || nextStatus;
+    await loadUsers(true);
     usersStatus.classList.remove("error");
     usersStatus.textContent = result.message || "تم تحديث حالة الحساب.";
-    document.getElementById("active-users-total").textContent = String(cachedUsers.filter(isUserActive).length);
-    renderUsers();
   } catch (error) {
     usersStatus.textContent = error.message || "تعذّر تغيير حالة الحساب.";
     usersStatus.classList.add("error");
@@ -324,7 +319,7 @@ async function updateUserStatus(user, button) {
   }
 }
 
-async function loadUsers(force = true) {
+async function loadUsers(force = true, page = usersPage) {
   if (usersLoading) return;
   if (usersLoaded && !force) return;
 
@@ -338,7 +333,13 @@ async function loadUsers(force = true) {
     const { data, error } = await supabaseClient.auth.getSession();
     if (error || !data.session) throw new Error("انتهت جلسة الدخول. سجّل الدخول مجدداً.");
 
-    const response = await fetch("/api/users", {
+    const params = new URLSearchParams({
+      page: String(page),
+      pageSize: String(USERS_PAGE_SIZE),
+      filter: usersFilter.value,
+      q: usersSearch.value.trim()
+    });
+    const response = await fetch("/api/users?" + params.toString(), {
       headers: { Authorization: "Bearer " + data.session.access_token },
       cache: "no-store"
     });
@@ -347,10 +348,18 @@ async function loadUsers(force = true) {
 
     cachedUsers = Array.isArray(result.users) ? result.users : [];
     usersLoaded = true;
-    document.getElementById("users-total").textContent = String(result.total ?? cachedUsers.length);
-    document.getElementById("providers-total").textContent = String(cachedUsers.filter((user) => user.is_provider).length);
-    document.getElementById("active-users-total").textContent = String(cachedUsers.filter(isUserActive).length);
-    usersStatus.textContent = "تم تحميل " + cachedUsers.length + " حساب. استخدم البحث أو التصفية للوصول للحساب المطلوب.";
+    usersPage = result.page || page;
+    usersTotal = Number(result.total ?? cachedUsers.length);
+    const summary = result.summary || {};
+    document.getElementById("users-total").textContent = summary.total != null ? String(summary.total) : "—";
+    document.getElementById("providers-total").textContent = summary.providers != null ? String(summary.providers) : "—";
+    document.getElementById("active-users-total").textContent = summary.active != null ? String(summary.active) : "—";
+
+    const pages = Math.max(1, Math.ceil(usersTotal / USERS_PAGE_SIZE));
+    document.getElementById("users-page-info").textContent = "الصفحة " + usersPage + " من " + pages + " · " + usersTotal + " نتيجة";
+    document.getElementById("users-prev").disabled = usersPage <= 1;
+    document.getElementById("users-next").disabled = usersPage >= pages;
+    usersStatus.textContent = usersTotal === 0 ? "لا توجد نتائج." : "تم تحميل " + cachedUsers.length + " حساب.";
     renderUsers();
   } catch (error) {
     usersStatus.textContent = error.message || "تعذّر تحميل المستخدمين.";
@@ -373,7 +382,7 @@ function showUserDetails(user) {
     ["حالة الحساب", user.deleted_at ? "محذوف" : (user.status || "غير معروف")],
     ["حالة التوثيق", user.verification_status || "غير محددة"],
     ["تاريخ التسجيل", user.created_at && !Number.isNaN(new Date(user.created_at).getTime()) ? new Date(user.created_at).toLocaleString("ar") : "—"],
-    ["تقييم مقدّم الخدمة", user.provider && user.provider.rating_avg != null ? Number(user.provider.rating_avg).toFixed(1) : "—"],
+    ["التقييم العام (زبون ومقدّم خدمة)", formatUserRating(user)],
     ["الخدمات المكتملة", user.provider && user.provider.completed_services_count != null ? String(user.provider.completed_services_count) : "—"],
     ["التوفّر لاستقبال الطلبات", user.provider ? (user.provider.is_available ? "متاح" : "غير متاح") : "ليس مقدّم خدمة"]
   ];
@@ -406,9 +415,14 @@ document.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && !userDetailsModal.classList.contains("hidden")) closeUserDetails();
 });
 
-usersSearch.addEventListener("input", renderUsers);
-usersFilter.addEventListener("change", renderUsers);
-document.getElementById("refresh-users").addEventListener("click", () => loadUsers(true));
+usersSearch.addEventListener("input", () => {
+  clearTimeout(usersSearchTimer);
+  usersSearchTimer = setTimeout(() => loadUsers(true, 1), 350);
+});
+usersFilter.addEventListener("change", () => loadUsers(true, 1));
+document.getElementById("refresh-users").addEventListener("click", () => loadUsers(true, usersPage));
+document.getElementById("users-prev").addEventListener("click", () => loadUsers(true, Math.max(1, usersPage - 1)));
+document.getElementById("users-next").addEventListener("click", () => loadUsers(true, usersPage + 1));
 
   const settingInfoModal = document.getElementById("setting-info-modal");
 const settingInfoTitle = document.getElementById("setting-info-title");
@@ -497,15 +511,21 @@ document.getElementById("logout-button").addEventListener("click", async () => {
 saveCommissionButton.addEventListener("click", async () => {
   const commissionMin = Number(commissionMinInput.value);
   const commissionMax = Number(commissionMaxInput.value);
-  const commissionDefault = Number(commissionDefaultInput.value);
-  if (![commissionMin, commissionMax, commissionDefault].every(Number.isInteger) ||
-      [commissionMin, commissionMax, commissionDefault].some(value => value < 50 || value > 1000)) {
-    commissionStatus.textContent = "أدخل أرقاماً صحيحة من 50 إلى 1000 لكل قيمة.";
+  const commissionPercent = Number(commissionPercentInput.value);
+  if (![commissionMin, commissionMax].every(Number.isInteger) ||
+      [commissionMin, commissionMax].some((value) => value < 50 || value > 1000)) {
+    commissionStatus.textContent = "الحدّان أعداد صحيحة من 50 إلى 1000.";
     commissionStatus.classList.add("error");
     return;
   }
-  if (commissionMin > commissionMax || commissionDefault < commissionMin || commissionDefault > commissionMax) {
-    commissionStatus.textContent = "يجب أن يكون الحد الأدنى أقل من أو يساوي الحد الأعلى، والعمولة الافتراضية بينهما.";
+  if (!Number.isFinite(commissionPercent) || commissionPercent < 0 || commissionPercent > 50 ||
+      Math.round(commissionPercent * 100) !== commissionPercent * 100) {
+    commissionStatus.textContent = "النسبة بين 0 و50 (بخانتين عشريتين كحد أقصى).";
+    commissionStatus.classList.add("error");
+    return;
+  }
+  if (commissionMin > commissionMax) {
+    commissionStatus.textContent = "يجب أن يكون الحد الأدنى أقل من أو يساوي الحد الأعلى.";
     commissionStatus.classList.add("error");
     return;
   }
@@ -513,23 +533,23 @@ saveCommissionButton.addEventListener("click", async () => {
   saveCommissionButton.disabled = true;
   saveCommissionButton.textContent = "جارٍ الحفظ…";
   commissionStatus.classList.remove("error");
-  commissionStatus.textContent = "جارٍ حفظ قيم العمولة الثلاث والتحقق منها…";
+  commissionStatus.textContent = "جارٍ حفظ إعدادات العمولة والتحقق منها…";
 
   try {
     const { data, error } = await supabaseClient.auth.getSession();
     if (error || !data.session) throw new Error("انتهت جلسة الدخول. سجّل الدخول مجدداً.");
     const saved = await callSettingsApi(data.session, "POST", {
-      action: "commission-settings", commissionMin, commissionMax, commissionDefault
+      action: "commission-settings", commissionMin, commissionMax, commissionPercent
     });
     const verified = await callSettingsApi(data.session);
     if (!saved.success || verified.commissionMin !== commissionMin ||
-        verified.commissionMax !== commissionMax || verified.commissionDefault !== commissionDefault) {
-      throw new Error("لم يتأكد النظام من حفظ القيم الثلاث. راجع الإعدادات قبل إعادة المحاولة.");
+        verified.commissionMax !== commissionMax || verified.commissionPercent !== commissionPercent) {
+      throw new Error("لم يتأكد النظام من حفظ القيم. راجع الإعدادات قبل إعادة المحاولة.");
     }
     commissionMinInput.value = String(verified.commissionMin);
     commissionMaxInput.value = String(verified.commissionMax);
-    commissionDefaultInput.value = String(verified.commissionDefault);
-    commissionStatus.textContent = "تم حفظ قيم العمولة الثلاث والتحقق منها بنجاح.";
+    commissionPercentInput.value = String(verified.commissionPercent);
+    commissionStatus.textContent = "تم حفظ إعدادات العمولة والتحقق منها بنجاح.";
     commissionStatus.classList.remove("error");
   } catch (error) {
     commissionStatus.textContent = error.message || "تعذّر تأكيد الحفظ.";

@@ -1,13 +1,73 @@
 import { audit, authorizeAdmin, json } from "../_lib/admin.js";
 
-async function supabaseRequest(env, path) {
+async function supabaseRequest(env, path, init = {}) {
   return fetch(env.SUPABASE_URL + path, {
+    method: init.method || "GET",
     headers: {
       apikey: env.SUPABASE_SERVICE_ROLE_KEY,
       Authorization: "Bearer " + env.SUPABASE_SERVICE_ROLE_KEY,
-      "Content-Type": "application/json"
+      "Content-Type": "application/json",
+      ...(init.headers || {})
     }
   });
+}
+
+// الإيميل غير موجود في جدول public.users؛ نجلبه من Auth (للتحقق من المالك الأساسي).
+async function getAuthEmail(env, userId) {
+  const response = await fetch(env.SUPABASE_URL + "/auth/v1/admin/users/" + userId, {
+    headers: {
+      apikey: env.SUPABASE_SERVICE_ROLE_KEY,
+      Authorization: "Bearer " + env.SUPABASE_SERVICE_ROLE_KEY
+    }
+  });
+  if (!response.ok) return { ok: false, email: null };
+  const user = await response.json();
+  return { ok: true, email: typeof user.email === "string" ? user.email : null };
+}
+
+// عدد الصفوف من ترويسة Content-Range (مثل "0-24/133" أو "*/0")
+function totalFromRange(response) {
+  const range = response.headers.get("content-range") || "";
+  const total = Number(range.split("/")[1]);
+  return Number.isFinite(total) ? total : 0;
+}
+
+async function countUsers(env, filter = "") {
+  const response = await supabaseRequest(env, "/rest/v1/users?select=id" + filter, {
+    method: "HEAD",
+    headers: { Prefer: "count=exact" }
+  });
+  return response.ok ? totalFromRange(response) : null;
+}
+
+// بناء شروط التصفية والبحث بشكل آمن (نحذف أي رمز قد يكسر صيغة PostgREST)
+export function buildUserFilter(query, filter) {
+  const simple = [];
+  const ors = [];
+
+  if (filter === "providers") simple.push("is_provider=eq.true");
+  else if (filter === "customers") simple.push("is_provider=eq.false");
+  else if (filter === "active") simple.push("status=eq.active", "deleted_at=is.null");
+  else if (filter === "inactive") ors.push("or(status.neq.active,deleted_at.not.is.null)");
+
+  const text = String(query || "").replace(/[^\p{L}\p{N}\s+@._-]/gu, "").trim().slice(0, 60);
+  if (text) {
+    const digits = text.replace(/\D/g, "");
+    const mostlyDigits = /^[\d\s+()-]+$/.test(text);
+    const needle = digits.replace(/^00963/, "").replace(/^963/, "").replace(/^0+/, "");
+    const clauses = [];
+    if (!mostlyDigits) {
+      const encoded = encodeURIComponent(text);
+      clauses.push("full_name.ilike.*" + encoded + "*", "region.ilike.*" + encoded + "*");
+    }
+    if (digits.length >= 3 && needle.length >= 3) clauses.push("phone.ilike.*" + needle + "*");
+    if (clauses.length > 0) ors.push("or(" + clauses.join(",") + ")");
+  }
+
+  let extra = simple.join("&");
+  if (ors.length === 1) extra += (extra ? "&" : "") + ors[0].replace(/^or/, "or=");
+  if (ors.length > 1) extra += (extra ? "&" : "") + "and=(" + ors.join(",") + ")";
+  return extra ? "&" + extra : "";
 }
 
 export async function onRequest({ request, env }) {
@@ -47,10 +107,14 @@ export async function onRequest({ request, env }) {
       const targets = await targetResponse.json();
       const target = Array.isArray(targets) ? targets[0] : null;
       if (!target) return json({ error: "المستخدم غير موجود." }, 404);
-      const isPrimaryOwner = Boolean(
-        env.ADMIN_EMAIL && typeof target.email === "string" &&
-        target.email.toLowerCase() === env.ADMIN_EMAIL.trim().toLowerCase()
-      );
+      let isPrimaryOwner = false;
+      if (env.ADMIN_EMAIL) {
+        const authUser = await getAuthEmail(env, userId);
+        if (!authUser.ok) return json({ error: "تعذّر التحقق من هوية الحساب المطلوب." }, 502);
+        isPrimaryOwner = Boolean(
+          authUser.email && authUser.email.toLowerCase() === env.ADMIN_EMAIL.trim().toLowerCase()
+        );
+      }
       // احمِ المالك الأساسي حتى لو عُطّلت is_admin أو تغيّرت حالة سجلّه.
       if (isPrimaryOwner || target.is_admin || userId === auth.user.id) {
         return json({ error: "لا يمكن إيقاف حساب المالك الأساسي أو أي حساب مدير." }, 403);
@@ -113,25 +177,41 @@ export async function onRequest({ request, env }) {
       });
     }
 
+    const url = new URL(request.url);
+    const page = Math.max(1, Math.floor(Number(url.searchParams.get("page")) || 1));
+    const pageSize = Math.min(100, Math.max(10, Math.floor(Number(url.searchParams.get("pageSize")) || 25)));
+    const filterParam = url.searchParams.get("filter") || "all";
+    const filter = buildUserFilter(url.searchParams.get("q"), filterParam);
+
+    const select = "id,full_name,phone,region,is_provider,is_admin,verification_status,status,created_at,deleted_at,rating_avg,rating_count";
     const usersResponse = await supabaseRequest(
       env,
-      "/rest/v1/users?select=id,full_name,phone,region,is_provider,verification_status,status,created_at,deleted_at&order=created_at.desc&limit=500"
+      "/rest/v1/users?select=" + select + filter +
+        "&order=created_at.desc&limit=" + pageSize + "&offset=" + (page - 1) * pageSize,
+      { headers: { Prefer: "count=exact" } }
     );
     if (!usersResponse.ok) {
       console.error("Users API upstream failure:", usersResponse.status, await usersResponse.text());
       return json({ error: "تعذّر تحميل قائمة المستخدمين. رمز الخطأ: " + usersResponse.status }, 502);
     }
-
+    const total = totalFromRange(usersResponse);
     const users = await usersResponse.json();
     if (!Array.isArray(users)) return json({ error: "وصلت بيانات مستخدمين غير صالحة." }, 502);
-    if (users.length === 0) return json({ users: [], total: 0 });
+
+    // ملخص عام (لا يتأثر بالبحث): الإجمالي، مقدمو الخدمة، الفعّالون
+    const [allCount, providersCount, activeCount] = await Promise.all([
+      countUsers(env),
+      countUsers(env, "&is_provider=eq.true"),
+      countUsers(env, "&status=eq.active&deleted_at=is.null")
+    ]);
+    const summary = { total: allCount, providers: providersCount, active: activeCount };
 
     const ids = users.map((user) => user.id).filter((id) => /^[0-9a-f-]{36}$/i.test(id));
-    if (ids.length === 0) return json({ users: users.map((user) => ({ ...user, provider: null })), total: users.length });
+    if (ids.length === 0) return json({ users: [], total, page, pageSize, summary });
 
     const profilesResponse = await supabaseRequest(
       env,
-      "/rest/v1/provider_profiles?select=user_id,rating_avg,completed_services_count,is_available&user_id=in.(" + ids.join(",") + ")"
+      "/rest/v1/provider_profiles?select=user_id,rating_avg,rating_count,completed_services_count,is_available&user_id=in.(" + ids.join(",") + ")"
     );
     if (!profilesResponse.ok) return json({ error: "تعذّر تحميل تفاصيل مقدّمي الخدمات." }, 502);
 
@@ -142,7 +222,7 @@ export async function onRequest({ request, env }) {
       provider: profileByUserId.get(user.id) || null
     }));
 
-    return json({ users: result, total: result.length });
+    return json({ users: result, total, page, pageSize, summary });
   } catch {
     return json({ error: "حدث خطأ أثناء تحميل المستخدمين. حاول مجدداً." }, 500);
   }

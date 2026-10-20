@@ -21,7 +21,7 @@ export async function onRequest({ request, env }) {
     const auth = await authorizeAdmin(request, env, { requireOwner: request.method !== "GET" });
     if (auth.error) return auth.error;
 
-    const keys = "commission_min,commission_max,commission_default";
+    const keys = "commission_min,commission_max,commission_default,commission_percent";
 
     if (request.method === "GET") {
       const appKeys = [
@@ -52,6 +52,7 @@ export async function onRequest({ request, env }) {
         commissionMin: values.commission_min,
         commissionMax: values.commission_max,
         commissionDefault: values.commission_default,
+        commissionPercent: Number.isFinite(values.commission_percent) ? values.commission_percent : 5,
         commission: values.commission_default,
         isFlat: values.commission_min === values.commission_max &&
           values.commission_max === values.commission_default,
@@ -192,19 +193,33 @@ export async function onRequest({ request, env }) {
     }
 
     if (body?.action === "commission-settings") {
+      // New clients send the percentage and no "default" (it is only used for agreements without a price, which are
+      // no longer allowed). Older clients still send commissionDefault and keep the previous behaviour.
+      const usesPercent = body.commissionPercent !== undefined;
       const values = {
         commission_min: Number(body.commissionMin),
-        commission_max: Number(body.commissionMax),
-        commission_default: Number(body.commissionDefault)
+        commission_max: Number(body.commissionMax)
       };
-      if (!Object.values(values).every(Number.isInteger) ||
-          Object.values(values).some(value => value < 50 || value > 1000)) {
+      if (usesPercent) {
+        values.commission_percent = Number(body.commissionPercent);
+        values.commission_default = values.commission_min;
+      } else {
+        values.commission_default = Number(body.commissionDefault);
+      }
+
+      const integers = [values.commission_min, values.commission_max, values.commission_default];
+      if (!integers.every(Number.isInteger) || integers.some((value) => value < 50 || value > 1000)) {
         return json({ error: "يجب أن تكون قيم العمولة أعداداً صحيحة بين 50 و1000 ليرة سورية جديدة." }, 400);
+      }
+      if (usesPercent && (!Number.isFinite(values.commission_percent) ||
+          values.commission_percent < 0 || values.commission_percent > 50 ||
+          Math.round(values.commission_percent * 100) !== values.commission_percent * 100)) {
+        return json({ error: "نسبة العمولة يجب أن تكون بين 0 و50 بخانتين عشريتين كحد أقصى." }, 400);
       }
       if (values.commission_min > values.commission_max ||
           values.commission_default < values.commission_min ||
           values.commission_default > values.commission_max) {
-        return json({ error: "يجب أن يكون الحد الأدنى أقل من أو يساوي الحد الأعلى، والعمولة الافتراضية بينهما." }, 400);
+        return json({ error: "يجب أن يكون الحد الأدنى أقل من أو يساوي الحد الأعلى." }, 400);
       }
 
       const commissionBefore = await readSettings(env, Object.keys(values));
@@ -232,7 +247,8 @@ export async function onRequest({ request, env }) {
         success: true,
         commissionMin: values.commission_min,
         commissionMax: values.commission_max,
-        commissionDefault: values.commission_default
+        commissionDefault: values.commission_default,
+        commissionPercent: values.commission_percent
       });
     }
 

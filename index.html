@@ -112,6 +112,11 @@
               <tbody id="users-table-body"><tr><td colspan="8" class="empty-users">لم يتم تحميل القائمة بعد.</td></tr></tbody>
             </table>
           </div>
+          <div class="pager">
+            <button id="users-prev" class="secondary-button" type="button" disabled>السابق</button>
+            <span id="users-page-info" class="helper"></span>
+            <button id="users-next" class="secondary-button" type="button" disabled>التالي</button>
+          </div>
         </div>
       </section>
 
@@ -191,7 +196,7 @@
       </section>
 
       <section id="commission-page" class="page hidden">
-        <div class="section-heading"><div><h2>العمولة</h2><p>تحكّم بكل قيمة من قيم العمولة الثلاث المحفوظة في قاعدة البيانات.</p></div></div>
+        <div class="section-heading"><div><h2>العمولة</h2><p>العمولة = نسبة من سعر الاتفاق، بين حد أدنى وحد أعلى. كل قيمة محفوظة في قاعدة البيانات.</p></div></div>
         <div class="panel commission-panel">
           <div class="setting-field">
             <div class="setting-label-row"><label for="commission-min">الحد الأدنى للعمولة</label><button class="setting-info-button" type="button" aria-label="معلومات عن الحد الأدنى للعمولة" data-info-title="الحد الأدنى للعمولة" data-info="أقل قيمة مسموحة للعمولة. يجب ألا تتجاوز الحد الأعلى.">i</button></div>
@@ -202,10 +207,10 @@
             <input id="commission-max" type="number" min="50" max="1000" step="1" value="50" inputmode="numeric">
           </div>
           <div class="setting-field">
-            <div class="setting-label-row"><label for="commission-default">العمولة الافتراضية</label><button class="setting-info-button" type="button" aria-label="معلومات عن العمولة الافتراضية" data-info-title="العمولة الافتراضية" data-info="القيمة الافتراضية التي يعتمدها النظام، ويجب أن تقع بين الحد الأدنى والحد الأعلى.">i</button></div>
-            <input id="commission-default" type="number" min="50" max="1000" step="1" value="50" inputmode="numeric">
+            <div class="setting-label-row"><label for="commission-percent">نسبة العمولة (%)</label><button class="setting-info-button" type="button" aria-label="معلومات عن نسبة العمولة" data-info-title="نسبة العمولة" data-info="النسبة المئوية من سعر الاتفاق. العمولة = النسبة × السعر، لكنها لا تقل عن الحد الأدنى ولا تزيد عن الحد الأعلى. الاتفاقات السابقة لا تتغير عند التعديل.">i</button></div>
+            <input id="commission-percent" type="number" min="0" max="50" step="0.5" value="5" inputmode="decimal">
           </div>
-          <p class="muted">جميع القيم بالليرة السورية الجديدة، وكل قيمة تتحكم بالسجل المقابل لها في قاعدة البيانات.</p>
+          <p class="muted">الحدّان بالليرة السورية الجديدة. مثال: نسبة 5% وحد أدنى 50 وحد أعلى 50 تعني عمولة ثابتة 50.</p>
           <p id="commission-status" class="helper" role="status">جارٍ تحميل قيم العمولة…</p>
           <button id="save-commission" class="primary-button" type="button">حفظ قيم العمولة</button>
         </div>
@@ -262,6 +267,6 @@
 
   <script src="./config.js"></script>
   <script src="./vendor/supabase.js"></script>
-  <script src="./app.js?v=3"></script>
+  <script src="./app.js?v=5"></script>
 </body>
 </html>
