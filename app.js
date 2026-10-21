@@ -770,7 +770,9 @@ const AUDIT_LABELS = {
   admin_set_user_status: "تغيير حالة مستخدم",
   admin_update_settings: "تعديل إعدادات",
   admin_resolve_report: "قرار في بلاغ",
-  admin_view_report_case: "عرض ملف بلاغ"
+  admin_view_report_case: "عرض ملف بلاغ",
+  admin_decide_verification: "قرار في طلب توثيق",
+  admin_view_verification_file: "عرض صورة توثيق"
 };
 
 async function loadAudit() {
