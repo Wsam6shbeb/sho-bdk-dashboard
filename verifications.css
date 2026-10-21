@@ -1,0 +1,19 @@
+/* صفحة طلبات التوثيق — تعتمد نفس ألوان اللوحة (#263f7a / #dce1eb / #b42318) */
+.vr-pending{background:#fff7e6;color:#8a5a00}
+.user-details-card.vr-card{width:min(100%,860px)}
+.vr-images{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:6px 0}
+.vr-figure{margin:0;display:flex;flex-direction:column;gap:8px;min-height:220px;padding:10px;border:1px solid #e8ebf1;border-radius:12px;background:#f8fafc}
+.vr-figure figcaption{font-size:12px;font-weight:700;color:#364152}
+.vr-image{display:block;width:100%;max-height:360px;object-fit:contain;border-radius:8px;background:#e9edf4}
+.vr-placeholder{margin:auto;font-size:12px;color:#778195}
+.vr-checks{display:flex;flex-direction:column;gap:9px;margin:10px 0}
+.vr-check{display:flex;align-items:flex-start;gap:9px;font-size:13px;color:#364152;cursor:pointer}
+.vr-check input{margin-top:3px}
+.vr-actions{display:flex;flex-wrap:wrap;gap:10px}
+.vr-reject{display:flex;flex-direction:column;gap:8px;margin-top:14px;padding-top:14px;border-top:1px solid #edf0f5}
+.vr-reject select,.vr-reject textarea{width:100%;padding:10px 12px;border:1px solid #d8dee9;border-radius:10px;background:#fff;color:#182230;font:inherit;font-size:13px}
+.vr-reject textarea{min-height:70px;resize:vertical}
+.vr-reject .danger-button{align-self:flex-start}
+.danger-button{border:0;border-radius:10px;padding:11px 18px;background:#b42318;color:#fff;font-weight:700;font-size:12px;cursor:pointer}
+.danger-button:disabled{opacity:.55;cursor:not-allowed}
+@media(max-width:700px){.vr-images{grid-template-columns:1fr}}
