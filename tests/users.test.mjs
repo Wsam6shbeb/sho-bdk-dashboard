@@ -22,7 +22,7 @@ function headers(h) {
 }
 
 // A tiny router over the upstream calls the API makes.
-function installFetch({ targetRow, targetEmail = "someone@example.com", authAdminOk = true } = {}) {
+function installFetch({ targetRow, targetEmail = "someone@example.com", authAdminOk = true, deleteRpcError = null } = {}) {
   const log = [];
   globalThis.fetch = async (url, init = {}) => {
     const u = String(url);
@@ -38,6 +38,9 @@ function installFetch({ targetRow, targetEmail = "someone@example.com", authAdmi
       return authAdminOk ? res({ id: TARGET_ID, email: targetEmail }) : res({}, 500);
     }
     if (u.includes("/auth/v1/admin/users/" + TARGET_ID) && method === "PUT") return res({});
+    if (u.includes("/rest/v1/rpc/admin_delete_user") && method === "POST") {
+      return deleteRpcError ? res({ message: deleteRpcError }, 400) : res(null, 204);
+    }
     if (u.includes("/rest/v1/users?select=id,status,is_admin,deleted_at")) return res(targetRow ? [targetRow] : []);
     if (u.includes("/rest/v1/users?id=eq." + TARGET_ID) && method === "PATCH") return res([{ id: TARGET_ID, status: "suspended" }]);
     if (u.includes("/rest/v1/audit_log")) return res({}, 201);
@@ -116,4 +119,48 @@ test("PATCH suspends a normal user and writes an audit entry", async () => {
   const audited = log.find((c) => c.url.includes("/rest/v1/audit_log"));
   assert.ok(audited, "audit_log write expected");
   assert.equal(JSON.parse(audited.body).action, "admin_set_user_status");
+});
+
+
+test("DELETE anonymizes a normal user through the protected RPC and writes an audit entry", async () => {
+  const log = installFetch({ targetRow: { id: TARGET_ID, status: "active", is_admin: false, deleted_at: null } });
+  const response = await call("DELETE", "/api/users", { userId: TARGET_ID });
+  assert.equal(response.status, 200);
+  const body = await response.json();
+  assert.equal(body.status, "deleted");
+  const rpc = log.find((c) => c.url.includes("/rest/v1/rpc/admin_delete_user"));
+  assert.ok(rpc, "admin deletion RPC expected");
+  assert.equal(rpc.method, "POST");
+  assert.deepEqual(JSON.parse(rpc.body), { p_user_id: TARGET_ID });
+  const audited = log.find((c) => c.url.includes("/rest/v1/audit_log"));
+  assert.ok(audited, "audit_log write expected");
+  assert.equal(JSON.parse(audited.body).action, "admin_delete_user");
+});
+
+test("DELETE refuses the primary owner even if its public row is not marked admin", async () => {
+  installFetch({
+    targetRow: { id: TARGET_ID, status: "active", is_admin: false, deleted_at: null },
+    targetEmail: "Owner@Example.com"
+  });
+  const response = await call("DELETE", "/api/users", { userId: TARGET_ID });
+  assert.equal(response.status, 403);
+});
+
+test("DELETE refuses accounts with active work", async () => {
+  installFetch({
+    targetRow: { id: TARGET_ID, status: "active", is_admin: false, deleted_at: null },
+    deleteRpcError: "ACTIVE_WORK_IN_PROGRESS"
+  });
+  const response = await call("DELETE", "/api/users", { userId: TARGET_ID });
+  assert.equal(response.status, 409);
+  assert.match((await response.json()).error, /قيد التنفيذ/);
+});
+
+test("DELETE refuses an already deleted account without calling the RPC", async () => {
+  const log = installFetch({
+    targetRow: { id: TARGET_ID, status: "deleted", is_admin: false, deleted_at: "2026-10-01T00:00:00Z" }
+  });
+  const response = await call("DELETE", "/api/users", { userId: TARGET_ID });
+  assert.equal(response.status, 409);
+  assert.equal(log.some((c) => c.url.includes("/rest/v1/rpc/admin_delete_user")), false);
 });
