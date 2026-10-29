@@ -285,7 +285,15 @@ function renderUsers() {
     accountButton.className = "secondary-button user-state-button";
     accountButton.textContent = isUserActive(user) ? "إيقاف الحساب" : "إعادة التفعيل";
     accountButton.addEventListener("click", () => updateUserStatus(user, accountButton));
-    if (!user.deleted_at && user.status !== "deleted" && !user.is_admin) actionCell.appendChild(accountButton);
+    if (!user.deleted_at && user.status !== "deleted" && !user.is_admin) {
+      actionCell.appendChild(accountButton);
+      const deleteButton = document.createElement("button");
+      deleteButton.type = "button";
+      deleteButton.className = "secondary-button user-delete-button";
+      deleteButton.textContent = "حذف الحساب";
+      deleteButton.addEventListener("click", () => deleteUserAccount(user, deleteButton));
+      actionCell.appendChild(deleteButton);
+    }
 
     [nameCell, phoneCell, regionCell, typeCell, statusCell, providerCell, createdCell, actionCell]
       .forEach((cell) => row.appendChild(cell));
@@ -314,6 +322,41 @@ async function updateUserStatus(user, button) {
     usersStatus.textContent = result.message || "تم تحديث حالة الحساب.";
   } catch (error) {
     usersStatus.textContent = error.message || "تعذّر تغيير حالة الحساب.";
+    usersStatus.classList.add("error");
+    button.disabled = false;
+  }
+}
+
+async function deleteUserAccount(user, button) {
+  const name = user.full_name || "المستخدم";
+  const confirmed = window.confirm(
+    "هل تريد حذف حساب " + name + "؟\n\n" +
+    "سيتم تعطيل تسجيل الدخول وإخفاء البيانات الشخصية. ستبقى سجلات التوثيق والمعاملات والتقييمات اللازمة للسلامة والمحاسبة. لا يمكن التراجع عن هذا الإجراء."
+  );
+  if (!confirmed) return;
+
+  button.disabled = true;
+  try {
+    const { data, error } = await supabaseClient.auth.getSession();
+    if (error || !data.session) throw new Error("انتهت جلسة الدخول. سجّل الدخول مجدداً.");
+
+    const response = await fetch("/api/users", {
+      method: "DELETE",
+      headers: {
+        Authorization: "Bearer " + data.session.access_token,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ userId: user.id }),
+      cache: "no-store"
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(result.error || "تعذّر حذف الحساب.");
+
+    await loadUsers(true);
+    usersStatus.classList.remove("error");
+    usersStatus.textContent = result.message || "تم حذف الحساب.";
+  } catch (error) {
+    usersStatus.textContent = error.message || "تعذّر حذف الحساب.";
     usersStatus.classList.add("error");
     button.disabled = false;
   }
