@@ -293,6 +293,18 @@ function renderUsers() {
       deleteButton.textContent = "حذف الحساب";
       deleteButton.addEventListener("click", () => deleteUserAccount(user, deleteButton));
       actionCell.appendChild(deleteButton);
+
+      const deleteInfoButton = document.createElement("button");
+      deleteInfoButton.type = "button";
+      deleteInfoButton.className = "user-delete-info-button";
+      deleteInfoButton.textContent = "i";
+      deleteInfoButton.title = "هذا الإجراء لا يحذف الحساب نهائياً من قاعدة البيانات: يعطّل تسجيل الدخول، ويخفي البيانات الشخصية، ويحتفظ بسجلات التوثيق والمعاملات والتقييمات والمحادثات اللازمة. لا يمكن التراجع عنه من لوحة التحكم.";
+      deleteInfoButton.setAttribute("aria-label", deleteInfoButton.title);
+      deleteInfoButton.addEventListener("click", () => {
+        usersStatus.classList.remove("error");
+        usersStatus.textContent = deleteInfoButton.title;
+      });
+      actionCell.appendChild(deleteInfoButton);
     }
 
     [nameCell, phoneCell, regionCell, typeCell, statusCell, providerCell, createdCell, actionCell]
