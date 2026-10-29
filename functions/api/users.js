@@ -71,13 +71,96 @@ export function buildUserFilter(query, filter) {
 }
 
 export async function onRequest({ request, env }) {
-  if (request.method !== "GET" && request.method !== "PATCH") {
+  if (request.method !== "GET" && request.method !== "PATCH" && request.method !== "DELETE") {
     return json({ error: "طريقة الطلب غير مدعومة." }, 405);
   }
 
   try {
-    const auth = await authorizeAdmin(request, env, { requireOwner: request.method === "PATCH" });
+    const auth = await authorizeAdmin(request, env, { requireOwner: request.method === "PATCH" || request.method === "DELETE" });
     if (auth.error) return auth.error;
+
+    if (request.method === "DELETE") {
+      let body;
+      try {
+        body = await request.json();
+      } catch {
+        return json({ error: "بيانات الطلب غير صالحة." }, 400);
+      }
+
+      const userId = typeof body.userId === "string" ? body.userId.trim() : "";
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(userId)) {
+        return json({ error: "معرّف المستخدم غير صالح." }, 400);
+      }
+
+      const targetResponse = await supabaseRequest(
+        env,
+        "/rest/v1/users?select=id,status,is_admin,deleted_at&id=eq." + userId
+      );
+      if (!targetResponse.ok) {
+        console.error("User deletion lookup failed:", targetResponse.status, await targetResponse.text());
+        return json({ error: "تعذّر التحقق من الحساب المطلوب." }, 502);
+      }
+      const targets = await targetResponse.json();
+      const target = Array.isArray(targets) ? targets[0] : null;
+      if (!target) return json({ error: "المستخدم غير موجود." }, 404);
+
+      let isPrimaryOwner = false;
+      if (env.ADMIN_EMAIL) {
+        const authUser = await getAuthEmail(env, userId);
+        if (!authUser.ok) return json({ error: "تعذّر التحقق من هوية الحساب المطلوب." }, 502);
+        isPrimaryOwner = Boolean(
+          authUser.email && authUser.email.toLowerCase() === env.ADMIN_EMAIL.trim().toLowerCase()
+        );
+      }
+
+      if (isPrimaryOwner || target.is_admin || userId === auth.user.id) {
+        return json({ error: "لا يمكن حذف حساب المالك الأساسي أو أي حساب مدير." }, 403);
+      }
+      if (target.deleted_at || target.status === "deleted") {
+        return json({ error: "الحساب محذوف مسبقاً." }, 409);
+      }
+
+      const deleteResponse = await fetch(
+        env.SUPABASE_URL + "/rest/v1/rpc/admin_delete_user",
+        {
+          method: "POST",
+          headers: {
+            apikey: env.SUPABASE_SERVICE_ROLE_KEY,
+            Authorization: "Bearer " + env.SUPABASE_SERVICE_ROLE_KEY,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ p_user_id: userId })
+        }
+      );
+
+      if (!deleteResponse.ok) {
+        const detail = await deleteResponse.text();
+        console.error("Admin account deletion failed:", deleteResponse.status, detail);
+        if (detail.includes("ACTIVE_WORK_IN_PROGRESS")) {
+          return json({ error: "لا يمكن حذف الحساب حالياً لوجود طلب أو اتفاق قيد التنفيذ لهذا المستخدم." }, 409);
+        }
+        if (detail.includes("USER_ALREADY_DELETED")) {
+          return json({ error: "الحساب محذوف مسبقاً." }, 409);
+        }
+        if (detail.includes("ADMIN_ACCOUNT_PROTECTED")) {
+          return json({ error: "لا يمكن حذف حساب مدير." }, 403);
+        }
+        if (detail.includes("USER_NOT_FOUND")) {
+          return json({ error: "المستخدم غير موجود." }, 404);
+        }
+        return json({ error: "تعذّر حذف الحساب. لم يتم تأكيد اكتمال العملية." }, 502);
+      }
+
+      await audit(env, auth.user.id, "admin_delete_user", "user", userId, {
+        previous_status: target.status || null
+      });
+
+      return json({
+        success: true,
+        status: "deleted",
+        message: "تم حذف الحساب وتعطيل تسجيل الدخول، مع الاحتفاظ بسجلات التوثيق والمعاملات اللازمة."
+      });
+    }
 
     if (request.method === "PATCH") {
       let body;
