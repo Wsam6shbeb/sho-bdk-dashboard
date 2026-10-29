@@ -89,3 +89,24 @@ async function deleteUserAccount(user, button) {
 
   cancelButton.focus();
 }
+
+
+// Keep the information tooltip clear and consistent whenever the users table rerenders.
+function refreshDeleteAccountInfoText() {
+  document.querySelectorAll(".user-delete-info-button").forEach((infoButton) => {
+    infoButton.title = DELETE_ACCOUNT_EXPLANATION;
+    infoButton.setAttribute("aria-label", DELETE_ACCOUNT_EXPLANATION);
+    infoButton.onclick = () => {
+      const status = document.getElementById("users-status");
+      if (!status) return;
+      status.classList.remove("error");
+      status.textContent = DELETE_ACCOUNT_EXPLANATION;
+    };
+  });
+}
+const deleteInfoObserver = new MutationObserver(refreshDeleteAccountInfoText);
+const usersTableForDeleteInfo = document.getElementById("users-table-body");
+if (usersTableForDeleteInfo) {
+  deleteInfoObserver.observe(usersTableForDeleteInfo, { childList: true, subtree: true });
+  refreshDeleteAccountInfoText();
+}
