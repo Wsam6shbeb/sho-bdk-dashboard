@@ -74,6 +74,8 @@
 
 .user-state-button{white-space:nowrap;padding:6px 10px;margin-inline-start:6px}
 .users-table td:last-child .user-state-button{margin-top:6px}
+.user-delete-button{white-space:nowrap;padding:6px 10px;margin-inline-start:6px;margin-top:6px!important;color:#b42318;border-color:#f3b4b4;background:#fff7f7}
+.user-delete-button:hover{background:#fee4e2;border-color:#f97066}
 
 
 /* Editable application settings */
