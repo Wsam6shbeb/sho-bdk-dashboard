@@ -51,6 +51,7 @@
       <button class="nav-item" data-page="users"><span>♙</span> إدارة المستخدمين</button>
       <button class="nav-item" data-page="verifications"><span>✓</span> طلبات التوثيق</button>
       <button class="nav-item" data-page="settings"><span>⚙</span> إعدادات التطبيق</button>
+      <button class="nav-item" data-page="payments"><span>▣</span> شحن الرصيد</button>
       <button class="nav-item" data-page="support"><span>✉</span> طريقة الدعم</button>
       <button class="nav-item" data-page="commission"><span>◈</span> العمولة</button>
       <button class="nav-item" data-page="security"><span>⛨</span> الأمان</button>
@@ -202,6 +203,45 @@
           <button id="save-app-settings" class="primary-button" type="submit">حفظ إعدادات التطبيق</button>
         </form>
         <div class="panel note-panel"><strong>مهم</strong><p>لن تتغير أي قيمة إلا بعد الضغط على حفظ. يتم التحقق من الصلاحية والقيم على الخادم قبل تحديث قاعدة البيانات.</p></div>
+      </section>
+
+      <section id="payments-page" class="page hidden">
+        <div class="section-heading">
+          <div><h2>بيانات شحن الرصيد</h2><p>احفظ بيانات حساب شام كاش مرة واحدة لتكون مرجعاً للتطبيق عند عرض تعليمات الشحن.</p></div>
+        </div>
+        <form id="payment-settings-form" class="panel payment-settings-panel">
+          <div class="payment-settings-grid">
+            <div class="setting-field">
+              <label for="sham-cash-account-code">رمز حساب شام كاش</label>
+              <input id="sham-cash-account-code" type="text" maxlength="100" autocomplete="off" placeholder="أدخل رمز أو رقم حساب شام كاش" required>
+              <small>سيظهر الرمز للمستخدم في صفحة الرصيد لنسخه عند التحويل.</small>
+            </div>
+            <div class="setting-field">
+              <label for="sham-cash-qr-image">صورة الحساب أو رمز QR</label>
+              <input id="sham-cash-qr-image" type="file" accept="image/jpeg,image/png,image/webp">
+              <small>الصيغ المقبولة JPG وPNG وWEBP، والحد الأقصى 3 ميغابايت.</small>
+              <label class="payment-remove-image"><input id="sham-cash-remove-qr" type="checkbox"> إزالة الصورة الحالية</label>
+            </div>
+          </div>
+          <div class="payment-preview-wrap">
+            <span class="helper">معاينة الصورة المحفوظة</span>
+            <img id="sham-cash-qr-preview" class="payment-qr-preview hidden" alt="صورة حساب شام كاش أو رمز QR">
+            <p id="sham-cash-no-image" class="payment-no-image">لم تُرفع صورة لحساب شام كاش بعد.</p>
+          </div>
+          <div class="payment-enable-row">
+            <div><strong>تفعيل تعليمات الشحن اليدوي في التطبيق</strong><small>اتركه معطّلاً إلى أن تتأكد من صحة رمز الحساب والصورة.</small></div>
+            <select id="manual-topup-enabled" required>
+              <option value="false">معطّل</option>
+              <option value="true">مفعّل</option>
+            </select>
+          </div>
+          <p id="payment-settings-status" class="helper" role="status">جارٍ تحميل بيانات شام كاش…</p>
+          <button id="save-payment-settings" class="primary-button" type="submit">حفظ بيانات الشحن</button>
+        </form>
+        <div class="panel note-panel">
+          <strong>ملاحظة مهمة</strong>
+          <p>الصورة والرمز بيانات دفع عامة سيعرضها التطبيق للمستخدمين. رفع الصورة لا يعني تأكيد أي تحويل؛ إضافة الرصيد الفعلية تبقى من لوحة التحكم بعد مراجعة التحويل.</p>
+        </div>
       </section>
 
       <section id="support-page" class="page hidden">
