@@ -602,6 +602,7 @@ function createWalletTopupCard(user) {
       status.classList.add("error");
       return;
     }
+    if (!window.confirm("تأكيد إضافة " + amount.toLocaleString("ar") + " ل.س إلى رصيد " + (user.full_name || "هذا المستخدم") + "؟")) return;
     submit.disabled = true;
     status.classList.remove("error", "success");
     status.textContent = "جارٍ تنفيذ الإضافة وتسجيلها…";
