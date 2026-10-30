@@ -1,6 +1,7 @@
 const pages = {
   users: { title: "إدارة المستخدمين", id: "users-page" },
   settings: { title: "إعدادات التطبيق", id: "settings-page" },
+  payments: { title: "شحن الرصيد", id: "payments-page" },
   support: { title: "طريقة الدعم", id: "support-page" },
   commission: { title: "العمولة", id: "commission-page" },
   security: { title: "الأمان", id: "security-page" },
@@ -23,6 +24,15 @@ const supportPhoneInput = document.getElementById("support-phone");
 const supportStatus = document.getElementById("support-status");
 const saveSupportButton = document.getElementById("save-support");
 const appSettingsForm = document.getElementById("app-settings-form");
+const paymentSettingsForm = document.getElementById("payment-settings-form");
+const paymentSettingsStatus = document.getElementById("payment-settings-status");
+const savePaymentSettingsButton = document.getElementById("save-payment-settings");
+const shamCashAccountCodeInput = document.getElementById("sham-cash-account-code");
+const shamCashQrInput = document.getElementById("sham-cash-qr-image");
+const shamCashQrPreview = document.getElementById("sham-cash-qr-preview");
+const shamCashNoImage = document.getElementById("sham-cash-no-image");
+const shamCashRemoveQr = document.getElementById("sham-cash-remove-qr");
+const manualTopupEnabledInput = document.getElementById("manual-topup-enabled");
 const appSettingsStatus = document.getElementById("app-settings-status");
 const saveAppSettingsButton = document.getElementById("save-app-settings");
 const appSettingsInputs = {
@@ -56,6 +66,7 @@ document.querySelectorAll(".nav-item").forEach((button) => {
     document.getElementById(pages[selected].id).classList.remove("hidden");
     document.getElementById("page-title").textContent = pages[selected].title;
     if (selected === "users") loadUsers();
+    if (selected === "payments") loadPaymentSettings();
     if (selected === "audit") loadAudit();
     if (selected === "security") loadSecurity();
   });
@@ -119,6 +130,97 @@ async function callSettingsApi(session, method = "GET", body) {
   }
   return result;
 }
+
+async function callPaymentSettingsApi(session, method = "GET", formData) {
+  const response = await fetch("/api/payment-settings", {
+    method,
+    headers: { Authorization: "Bearer " + session.access_token },
+    ...(formData ? { body: formData } : {}),
+    cache: "no-store"
+  });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(result.error || "تعذّر تحميل إعدادات شام كاش.");
+  return result;
+}
+
+function setPaymentPreview(url) {
+  if (url) {
+    shamCashQrPreview.src = url;
+    shamCashQrPreview.classList.remove("hidden");
+    shamCashNoImage.classList.add("hidden");
+  } else {
+    shamCashQrPreview.removeAttribute("src");
+    shamCashQrPreview.classList.add("hidden");
+    shamCashNoImage.classList.remove("hidden");
+  }
+}
+
+async function loadPaymentSettings() {
+  paymentSettingsStatus.classList.remove("error", "success");
+  paymentSettingsStatus.textContent = "جارٍ تحميل بيانات شام كاش…";
+  savePaymentSettingsButton.disabled = true;
+  try {
+    const { data, error } = await supabaseClient.auth.getSession();
+    if (error || !data.session) throw new Error("انتهت جلسة الدخول. سجّل الدخول مجدداً.");
+    const result = await callPaymentSettingsApi(data.session);
+    shamCashAccountCodeInput.value = result.accountCode || "";
+    manualTopupEnabledInput.value = String(Boolean(result.enabled));
+    shamCashQrInput.value = "";
+    shamCashRemoveQr.checked = false;
+    setPaymentPreview(result.qrUrl || "");
+    paymentSettingsStatus.textContent = result.enabled
+      ? "بيانات شام كاش محفوظة وتعليمات الشحن اليدوي مفعّلة."
+      : "تم تحميل البيانات. تعليمات الشحن اليدوي معطّلة حالياً.";
+    savePaymentSettingsButton.disabled = adminState.role !== "owner";
+  } catch (error) {
+    paymentSettingsStatus.textContent = error.message || "تعذّر تحميل بيانات شام كاش.";
+    paymentSettingsStatus.classList.add("error");
+  }
+}
+
+shamCashQrInput.addEventListener("change", () => {
+  const file = shamCashQrInput.files?.[0];
+  if (!file) return;
+  if (file.size > 3 * 1024 * 1024) {
+    shamCashQrInput.value = "";
+    paymentSettingsStatus.textContent = "حجم الصورة يجب ألا يتجاوز 3 ميغابايت.";
+    paymentSettingsStatus.classList.add("error");
+    return;
+  }
+  setPaymentPreview(URL.createObjectURL(file));
+  shamCashRemoveQr.checked = false;
+});
+
+paymentSettingsForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  if (adminState.role !== "owner") return;
+  savePaymentSettingsButton.disabled = true;
+  paymentSettingsStatus.classList.remove("error", "success");
+  paymentSettingsStatus.textContent = "جارٍ حفظ بيانات شام كاش…";
+  try {
+    const { data, error } = await supabaseClient.auth.getSession();
+    if (error || !data.session) throw new Error("انتهت جلسة الدخول. سجّل الدخول مجدداً.");
+    const formData = new FormData();
+    formData.append("accountCode", shamCashAccountCodeInput.value.trim());
+    formData.append("enabled", manualTopupEnabledInput.value);
+    formData.append("removeQr", String(shamCashRemoveQr.checked));
+    const file = shamCashQrInput.files?.[0];
+    if (file) formData.append("qrImage", file);
+    const result = await callPaymentSettingsApi(data.session, "POST", formData);
+    setPaymentPreview(result.qrUrl || "");
+    shamCashQrInput.value = "";
+    shamCashRemoveQr.checked = false;
+    paymentSettingsStatus.textContent = result.enabled
+      ? "تم حفظ البيانات وتفعيل تعليمات الشحن اليدوي."
+      : "تم حفظ بيانات شام كاش. تعليمات الشحن اليدوي معطّلة.";
+    paymentSettingsStatus.classList.add("success");
+  } catch (error) {
+    paymentSettingsStatus.textContent = error.message || "تعذّر حفظ بيانات شام كاش.";
+    paymentSettingsStatus.classList.add("error");
+  } finally {
+    savePaymentSettingsButton.disabled = adminState.role !== "owner";
+  }
+});
 
 async function enterDashboard(session) {
   // Keep the dashboard hidden until the server confirms this account is authorized.
@@ -428,6 +530,115 @@ async function loadUsers(force = true, page = usersPage) {
 const userDetailsModal = document.getElementById("user-details-modal");
 const userDetailsContent = document.getElementById("user-details-content");
 
+function createWalletTopupCard(user) {
+  if (adminState.role !== "owner" || !isUserActive(user) || user.is_admin) return null;
+
+  const card = document.createElement("section");
+  card.className = "wallet-admin-card";
+  const heading = document.createElement("h3");
+  heading.textContent = "إضافة رصيد يدوية";
+  const balance = document.createElement("p");
+  balance.className = "wallet-admin-balance";
+  balance.textContent = "جارٍ تحميل الرصيد الحالي…";
+  const form = document.createElement("form");
+  form.className = "wallet-admin-form";
+
+  const amountLabel = document.createElement("label");
+  amountLabel.textContent = "المبلغ (ليرة سورية)";
+  const amountInput = document.createElement("input");
+  amountInput.type = "number";
+  amountInput.min = "1";
+  amountInput.max = "100000";
+  amountInput.step = "1";
+  amountInput.required = true;
+  amountInput.inputMode = "numeric";
+  amountLabel.appendChild(amountInput);
+
+  const reasonLabel = document.createElement("label");
+  reasonLabel.className = "wallet-admin-reason";
+  reasonLabel.textContent = "سبب الإضافة";
+  const reasonInput = document.createElement("input");
+  reasonInput.type = "text";
+  reasonInput.minLength = 5;
+  reasonInput.maxLength = 300;
+  reasonInput.required = true;
+  reasonInput.placeholder = "مثال: تأكيد تحويل شام كاش";
+  reasonLabel.appendChild(reasonInput);
+
+  const submit = document.createElement("button");
+  submit.type = "submit";
+  submit.className = "primary-button";
+  submit.textContent = "تأكيد إضافة الرصيد";
+  const status = document.createElement("p");
+  status.className = "wallet-admin-status helper";
+  status.setAttribute("role", "status");
+  form.append(amountLabel, reasonLabel, submit);
+  card.append(heading, balance, form, status);
+
+  let requestId = crypto.randomUUID();
+  (async () => {
+    try {
+      const { data, error } = await supabaseClient.auth.getSession();
+      if (error || !data.session) throw new Error("انتهت جلسة الدخول. سجّل الدخول مجدداً.");
+      const response = await fetch("/api/wallet-topup?userId=" + encodeURIComponent(user.id), {
+        headers: { Authorization: "Bearer " + data.session.access_token },
+        cache: "no-store"
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || "تعذّر تحميل رصيد المستخدم.");
+      balance.textContent = "الرصيد الحالي: " + Number(result.balance).toLocaleString("ar") + " ل.س";
+    } catch (error) {
+      balance.textContent = error.message || "تعذّر تحميل الرصيد الحالي.";
+      balance.classList.add("error");
+    }
+  })();
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const amount = Number(amountInput.value);
+    const reason = reasonInput.value.trim();
+    if (!Number.isSafeInteger(amount) || amount <= 0 || amount > 100000 || reason.length < 5 || reason.length > 300) {
+      status.textContent = "تحقق من المبلغ وسبب الإضافة قبل المتابعة.";
+      status.classList.add("error");
+      return;
+    }
+    if (!window.confirm("تأكيد إضافة " + amount.toLocaleString("ar") + " ل.س إلى رصيد " + (user.full_name || "هذا المستخدم") + "؟")) return;
+    submit.disabled = true;
+    status.classList.remove("error", "success");
+    status.textContent = "جارٍ تنفيذ الإضافة وتسجيلها…";
+    try {
+      const { data, error } = await supabaseClient.auth.getSession();
+      if (error || !data.session) throw new Error("انتهت جلسة الدخول. سجّل الدخول مجدداً.");
+      const response = await fetch("/api/wallet-topup", {
+        method: "POST",
+        headers: {
+          Authorization: "Bearer " + data.session.access_token,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ userId: user.id, amount, reason, requestId }),
+        cache: "no-store"
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || "تعذّرت إضافة الرصيد.");
+      balance.textContent = "الرصيد الحالي: " + Number(result.balance_after).toLocaleString("ar") + " ل.س";
+      status.textContent = result.already_processed
+        ? "هذه العملية مسجّلة مسبقاً؛ لم يُضف الرصيد مرة ثانية."
+        : "تمت إضافة " + amount.toLocaleString("ar") + " ل.س وتسجيل العملية وإرسال إشعار للمستخدم.";
+      status.classList.add("success");
+      amountInput.value = "";
+      reasonInput.value = "";
+      requestId = crypto.randomUUID();
+    } catch (error) {
+      status.textContent = error.message || "تعذّرت إضافة الرصيد. يمكنك إعادة المحاولة بأمان.";
+      status.classList.add("error");
+    } finally {
+      submit.disabled = false;
+    }
+  });
+
+  return card;
+}
+
 function showUserDetails(user) {
   const rows = [
     ["الاسم", user.full_name || "اسم غير مضاف"],
@@ -453,6 +664,8 @@ function showUserDetails(user) {
     row.append(labelElement, valueElement);
     userDetailsContent.appendChild(row);
   });
+  const topupCard = createWalletTopupCard(user);
+  if (topupCard) userDetailsContent.appendChild(topupCard);
   userDetailsModal.classList.remove("hidden");
   userDetailsModal.setAttribute("aria-hidden", "false");
 }
@@ -688,7 +901,7 @@ function applyAdminState(settings) {
   adminState.requireMfa = Boolean(settings.dashboardRequireMfa);
   adminState.aal = settings.sessionAal || "aal1";
   const readOnly = adminState.role === "support";
-  [saveCommissionButton, saveAppSettingsButton, saveSupportButton, document.getElementById("save-security")]
+  [saveCommissionButton, saveAppSettingsButton, saveSupportButton, savePaymentSettingsButton, document.getElementById("save-security")]
     .forEach((button) => {
       if (!button) return;
       if (readOnly) button.disabled = true;
@@ -827,6 +1040,7 @@ const AUDIT_LABELS = {
   admin_resolve_report: "قرار في بلاغ",
   admin_view_report_case: "عرض ملف بلاغ",
   admin_decide_verification: "قرار في طلب توثيق",
+  admin_topup_wallet: "إضافة رصيد لمستخدم",
   admin_view_verification_file: "عرض صورة توثيق"
 };
 

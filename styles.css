@@ -116,3 +116,30 @@
 /* Information icon explaining the account deletion behavior */
 .user-delete-info-button{display:inline-grid;place-items:center;width:22px;height:22px;padding:0;margin-inline-start:5px;border:1px solid #9aa8c0;border-radius:50%;background:#fff;color:#263f7a;font-family:Arial,sans-serif;font-size:13px;font-weight:800;line-height:1;cursor:help;vertical-align:middle}
 .user-delete-info-button:hover,.user-delete-info-button:focus-visible{background:#eaf0ff;border-color:#263f7a;outline:2px solid #d8e2ff;outline-offset:2px}
+
+
+/* Manual Sham Cash top-up settings */
+.payment-settings-panel{max-width:1000px}
+.payment-settings-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
+.payment-settings-grid input{width:100%;padding:12px;border:1px solid #dce1eb;border-radius:10px;background:#fbfcfe}
+.payment-settings-grid input[type=file]{padding:9px;background:#fff}
+.payment-remove-image{display:flex!important;align-items:center;gap:8px;font-weight:500!important;color:#6b7280}
+.payment-remove-image input{width:auto!important}
+.payment-preview-wrap{margin-top:22px;padding:16px;border:1px dashed #d7deeb;border-radius:12px;display:flex;flex-direction:column;align-items:flex-start;gap:10px}
+.payment-qr-preview{width:190px;height:190px;object-fit:contain;border:1px solid #edf0f5;border-radius:10px;background:#fff;padding:6px}
+.payment-no-image{font-size:12px;color:#7b8494}
+.payment-enable-row{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:20px;padding:15px;background:#f8fafc;border:1px solid #e8ebf1;border-radius:12px}
+.payment-enable-row strong,.payment-enable-row small{display:block}
+.payment-enable-row strong{font-size:13px}
+.payment-enable-row small{font-size:11px;color:#7b8494;margin-top:5px}
+.payment-enable-row select{padding:10px;border:1px solid #dce1eb;border-radius:9px;background:#fff}
+.wallet-admin-card{margin-top:18px;padding:16px;border:1px solid #dfe6f2;border-radius:12px;background:#f9fbff}
+.wallet-admin-card h3{font-size:14px;margin:0 0 8px}
+.wallet-admin-balance{font-size:13px;font-weight:700;margin:0 0 12px;color:#263f7a}
+.wallet-admin-form{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.wallet-admin-form label{font-size:11px;font-weight:700;display:flex;flex-direction:column;gap:6px}
+.wallet-admin-form input{min-width:0;width:100%;padding:10px;border:1px solid #dce1eb;border-radius:9px;background:#fff}
+.wallet-admin-form .wallet-admin-reason{grid-column:1/-1}
+.wallet-admin-form button{grid-column:1/-1;justify-self:start}
+.wallet-admin-status{font-size:11px;line-height:1.7;margin:8px 0 0}
+@media(max-width:650px){.payment-settings-grid{grid-template-columns:1fr}.payment-enable-row{align-items:flex-start;flex-direction:column}.wallet-admin-form{grid-template-columns:1fr}}
