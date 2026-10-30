@@ -1,8 +1,7 @@
-import { audit, authorizeAdmin, changes, json, readSettings } from "../_lib/admin.js";
+import { audit, authorizeAdmin, changes, json } from "../_lib/admin.js";
 
 const BUCKET = "payment-assets";
 const MAX_IMAGE_SIZE = 3 * 1024 * 1024;
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const MIME_EXTENSIONS = {
   "image/jpeg": "jpg",
   "image/png": "png",
