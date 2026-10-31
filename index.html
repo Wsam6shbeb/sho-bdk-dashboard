@@ -93,6 +93,15 @@
           <div><h2>إدارة المستخدمين</h2><p>عرض حسابات المستخدمين ومقدّمي الخدمات من قاعدة البيانات.</p></div>
           <button id="refresh-users" class="secondary-button" type="button">تحديث القائمة</button>
         </div>
+        <div class="panel wallet-admin-card">
+          <h3>البحث برمز الشحن</h3>
+          <p class="muted">أدخل الرمز الذي كتبه المستخدم في ملاحظات حوالة شام كاش للوصول إلى حسابه.</p>
+          <div class="users-toolbar">
+            <input id="topup-code-search" type="search" maxlength="14" autocomplete="off" placeholder="مثال: SHB-1A2B3C4D5E" aria-label="رمز شحن المستخدم">
+            <button id="topup-code-search-button" class="primary-button" type="button">بحث عن المستخدم</button>
+          </div>
+          <p id="topup-code-search-status" class="helper" role="status"></p>
+        </div>
         <div class="user-stats">
           <div class="user-stat"><span>إجمالي الحسابات</span><strong id="users-total">—</strong></div>
           <div class="user-stat"><span>مقدّمو الخدمات</span><strong id="providers-total">—</strong></div>
