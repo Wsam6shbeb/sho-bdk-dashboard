@@ -51,8 +51,7 @@
       <button class="nav-item" data-page="users"><span>♙</span> إدارة المستخدمين</button>
       <button class="nav-item" data-page="verifications"><span>✓</span> طلبات التوثيق</button>
       <button class="nav-item" data-page="settings"><span>⚙</span> إعدادات التطبيق</button>
-      <button class="nav-item" data-page="payments"><span>▣</span> شحن الرصيد</button>
-      <button class="nav-item" data-page="support"><span>✉</span> طريقة الدعم</button>
+      <button class="nav-item" data-page="payments"><span>▣</span> إضافة رصيد</button>
       <button class="nav-item" data-page="commission"><span>◈</span> العمولة</button>
       <button class="nav-item" data-page="security"><span>⛨</span> الأمان</button>
       <button class="nav-item" data-page="audit"><span>☰</span> سجل التدقيق</button>
@@ -92,15 +91,6 @@
         <div class="section-heading">
           <div><h2>إدارة المستخدمين</h2><p>عرض حسابات المستخدمين ومقدّمي الخدمات من قاعدة البيانات.</p></div>
           <button id="refresh-users" class="secondary-button" type="button">تحديث القائمة</button>
-        </div>
-        <div class="panel wallet-admin-card">
-          <h3>البحث برمز الشحن</h3>
-          <p class="muted">أدخل الرمز الذي كتبه المستخدم في ملاحظات حوالة شام كاش للوصول إلى حسابه.</p>
-          <div class="users-toolbar">
-            <input id="topup-code-search" type="search" maxlength="14" autocomplete="off" placeholder="مثال: SHB-1A2B3C4D5E" aria-label="رمز شحن المستخدم">
-            <button id="topup-code-search-button" class="primary-button" type="button">بحث عن المستخدم</button>
-          </div>
-          <p id="topup-code-search-status" class="helper" role="status"></p>
         </div>
         <div class="user-stats">
           <div class="user-stat"><span>إجمالي الحسابات</span><strong id="users-total">—</strong></div>
@@ -212,11 +202,23 @@
           <button id="save-app-settings" class="primary-button" type="submit">حفظ إعدادات التطبيق</button>
         </form>
         <div class="panel note-panel"><strong>مهم</strong><p>لن تتغير أي قيمة إلا بعد الضغط على حفظ. يتم التحقق من الصلاحية والقيم على الخادم قبل تحديث قاعدة البيانات.</p></div>
+        <div class      <section id="payments-page" class="page hidden">
+        <div class="section-heading">
+          <div><h2>إضافة رصيد</h2><p>ابحث عن المستخدم برمز الشحن الموجود في ملاحظات حوالة شام كاش، ثم راجع بياناته وأضف الرصيد بعد التأكد من الإيصال.</p></div>
+        </div>
+        <div class="panel wallet-admin-card">
+          <h3>البحث برمز الشحن</h3>
+          <p class="muted">أدخل الرمز الذي أرسله المستخدم للوصول إلى حسابه.</p>
+          <div class="users-toolbar">
+            <input id="topup-code-search" type="search" maxlength="14" autocomplete="off" placeholder="مثال: SHB-1A2B3C4D5E" aria-label="رمز شحن المستخدم">
+            <button id="topup-code-search-button" class="primary-button" type="button">بحث عن المستخدم</button>
+          </div>
+          <p id="topup-code-search-status" class="helper" role="status"></p>
+        </div>
+        <div id="topup-user-details"></div>
       </section>
 
-      <section id="payments-page" class="page hidden">
-        <div class="section-heading">
-          <div><h2>بيانات شحن الرصيد</h2><p>احفظ بيانات حساب شام كاش مرة واحدة لتكون مرجعاً للتطبيق عند عرض تعليمات الشحن.</p></div>
+دة لتكون مرجعاً للتطبيق عند عرض تعليمات الشحن.</p></div>
         </div>
         <form id="payment-settings-form" class="panel payment-settings-panel">
           <div class="payment-settings-grid">
@@ -347,7 +349,7 @@
 
   <script src="./config.js"></script>
   <script src="./vendor/supabase.js"></script>
-  <script src="./app.js?v=6"></script>
+  <script src="./app.js?v=7"></script>
   <script src="./delete-account-warning.js?v=1"></script>
   <script src="./verifications.js?v=1"></script>
 </body>
