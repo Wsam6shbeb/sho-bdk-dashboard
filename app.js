@@ -310,6 +310,57 @@ const usersStatus = document.getElementById("users-status");
 const usersTableBody = document.getElementById("users-table-body");
 const usersSearch = document.getElementById("users-search");
 const usersFilter = document.getElementById("users-filter");
+const topupCodeSearch = document.getElementById("topup-code-search");
+const topupCodeSearchButton = document.getElementById("topup-code-search-button");
+const topupCodeSearchStatus = document.getElementById("topup-code-search-status");
+
+async function searchTopupCode() {
+  const code = topupCodeSearch.value.trim().toUpperCase();
+  topupCodeSearchStatus.classList.remove("error", "success");
+  if (!/^SHB-[A-F0-9]{10}$/.test(code)) {
+    topupCodeSearchStatus.textContent = "أدخل رمزاً صحيحاً بصيغة SHB- متبوعاً بـ10 أحرف أو أرقام.";
+    topupCodeSearchStatus.classList.add("error");
+    return;
+  }
+  topupCodeSearchButton.disabled = true;
+  topupCodeSearchStatus.textContent = "جارٍ البحث عن المستخدم…";
+  try {
+    const { data, error } = await supabaseClient.auth.getSession();
+    if (error || !data.session) throw new Error("انتهت جلسة الدخول. سجّل الدخول مجدداً.");
+    const response = await fetch("/api/wallet-topup-lookup?code=" + encodeURIComponent(code), {
+      headers: { Authorization: "Bearer " + data.session.access_token },
+      cache: "no-store"
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(result.error || "تعذّر البحث عن رمز الشحن.");
+    const user = {
+      id: result.user.id,
+      full_name: result.user.name,
+      phone: result.user.phone,
+      topup_code: result.user.topupCode,
+      status: "active",
+      deleted_at: null,
+      is_admin: false,
+      is_provider: false,
+      region: ""
+    };
+    topupCodeSearchStatus.textContent = "تم العثور على المستخدم. يمكنك مراجعة بياناته وإضافة الرصيد.";
+    topupCodeSearchStatus.classList.add("success");
+    showUserDetails(user);
+  } catch (error) {
+    topupCodeSearchStatus.textContent = error.message || "تعذّر البحث عن رمز الشحن.";
+    topupCodeSearchStatus.classList.add("error");
+  } finally {
+    topupCodeSearchButton.disabled = false;
+  }
+}
+topupCodeSearchButton.addEventListener("click", searchTopupCode);
+topupCodeSearch.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") {
+    event.preventDefault();
+    searchTopupCode();
+  }
+});
 let cachedUsers = [];
 let usersLoaded = false;
 let usersLoading = false;
@@ -554,6 +605,18 @@ function createWalletTopupCard(user) {
   amountInput.inputMode = "numeric";
   amountLabel.appendChild(amountInput);
 
+  const transactionLabel = document.createElement("label");
+  transactionLabel.className = "wallet-admin-reason";
+  transactionLabel.textContent = "رقم عملية شام كاش";
+  const transactionInput = document.createElement("input");
+  transactionInput.type = "text";
+  transactionInput.minLength = 4;
+  transactionInput.maxLength = 100;
+  transactionInput.required = true;
+  transactionInput.autocomplete = "off";
+  transactionInput.placeholder = "أدخل رقم العملية كما يظهر في الإيصال";
+  transactionLabel.appendChild(transactionInput);
+
   const reasonLabel = document.createElement("label");
   reasonLabel.className = "wallet-admin-reason";
   reasonLabel.textContent = "سبب الإضافة";
@@ -562,8 +625,17 @@ function createWalletTopupCard(user) {
   reasonInput.minLength = 5;
   reasonInput.maxLength = 300;
   reasonInput.required = true;
-  reasonInput.placeholder = "مثال: تأكيد تحويل شام كاش";
+  reasonInput.value = "تأكيد تحويل شام كاش";
   reasonLabel.appendChild(reasonInput);
+
+  const thankYouLabel = document.createElement("label");
+  thankYouLabel.className = "wallet-admin-reason";
+  thankYouLabel.textContent = "رسالة الشكر التي ستصل للمستخدم";
+  const thankYouInput = document.createElement("textarea");
+  thankYouInput.maxLength = 300;
+  thankYouInput.rows = 3;
+  thankYouInput.value = "شكراً لاستخدامك شو بدك. تم إضافة رصيدك بنجاح.";
+  thankYouLabel.appendChild(thankYouInput);
 
   const submit = document.createElement("button");
   submit.type = "submit";
@@ -572,7 +644,7 @@ function createWalletTopupCard(user) {
   const status = document.createElement("p");
   status.className = "wallet-admin-status helper";
   status.setAttribute("role", "status");
-  form.append(amountLabel, reasonLabel, submit);
+  form.append(amountLabel, transactionLabel, reasonLabel, thankYouLabel, submit);
   card.append(heading, balance, form, status);
 
   let requestId = crypto.randomUUID();
@@ -597,8 +669,10 @@ function createWalletTopupCard(user) {
     event.preventDefault();
     const amount = Number(amountInput.value);
     const reason = reasonInput.value.trim();
-    if (!Number.isSafeInteger(amount) || amount <= 0 || amount > 100000 || reason.length < 5 || reason.length > 300) {
-      status.textContent = "تحقق من المبلغ وسبب الإضافة قبل المتابعة.";
+    const shamCashTransactionId = transactionInput.value.trim();
+    const thankYouMessage = thankYouInput.value.trim();
+    if (!Number.isSafeInteger(amount) || amount <= 0 || amount > 100000 || reason.length < 5 || reason.length > 300 || !/^[A-Za-z0-9-]{4,100}$/.test(shamCashTransactionId) || thankYouMessage.length > 300) {
+      status.textContent = "تحقق من المبلغ ورقم عملية شام كاش وسبب الإضافة قبل المتابعة.";
       status.classList.add("error");
       return;
     }
@@ -615,7 +689,7 @@ function createWalletTopupCard(user) {
           Authorization: "Bearer " + data.session.access_token,
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({ userId: user.id, amount, reason, requestId }),
+        body: JSON.stringify({ userId: user.id, amount, reason, requestId, shamCashTransactionId, thankYouMessage }),
         cache: "no-store"
       });
       const result = await response.json().catch(() => ({}));
@@ -626,7 +700,8 @@ function createWalletTopupCard(user) {
         : "تمت إضافة " + amount.toLocaleString("ar") + " ل.س وتسجيل العملية وإرسال إشعار للمستخدم.";
       status.classList.add("success");
       amountInput.value = "";
-      reasonInput.value = "";
+      transactionInput.value = "";
+      reasonInput.value = "تأكيد تحويل شام كاش";
       requestId = crypto.randomUUID();
     } catch (error) {
       status.textContent = error.message || "تعذّرت إضافة الرصيد. يمكنك إعادة المحاولة بأمان.";
@@ -643,6 +718,7 @@ function showUserDetails(user) {
   const rows = [
     ["الاسم", user.full_name || "اسم غير مضاف"],
     ["رقم الهاتف", user.phone || "—"],
+    ["رمز الشحن", user.topup_code || "—"],
     ["المنطقة", user.region || "—"],
     ["نوع الحساب", user.is_provider ? "مقدّم خدمة" : "مستخدم"],
     ["حالة الحساب", user.deleted_at ? "محذوف" : (user.status || "غير معروف")],
