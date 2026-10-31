@@ -310,6 +310,57 @@ const usersStatus = document.getElementById("users-status");
 const usersTableBody = document.getElementById("users-table-body");
 const usersSearch = document.getElementById("users-search");
 const usersFilter = document.getElementById("users-filter");
+const topupCodeSearch = document.getElementById("topup-code-search");
+const topupCodeSearchButton = document.getElementById("topup-code-search-button");
+const topupCodeSearchStatus = document.getElementById("topup-code-search-status");
+
+async function searchTopupCode() {
+  const code = topupCodeSearch.value.trim().toUpperCase();
+  topupCodeSearchStatus.classList.remove("error", "success");
+  if (!/^SHB-[A-F0-9]{10}$/.test(code)) {
+    topupCodeSearchStatus.textContent = "أدخل رمزاً صحيحاً بصيغة SHB- متبوعاً بـ10 أحرف أو أرقام.";
+    topupCodeSearchStatus.classList.add("error");
+    return;
+  }
+  topupCodeSearchButton.disabled = true;
+  topupCodeSearchStatus.textContent = "جارٍ البحث عن المستخدم…";
+  try {
+    const { data, error } = await supabaseClient.auth.getSession();
+    if (error || !data.session) throw new Error("انتهت جلسة الدخول. سجّل الدخول مجدداً.");
+    const response = await fetch("/api/wallet-topup-lookup?code=" + encodeURIComponent(code), {
+      headers: { Authorization: "Bearer " + data.session.access_token },
+      cache: "no-store"
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(result.error || "تعذّر البحث عن رمز الشحن.");
+    const user = {
+      id: result.user.id,
+      full_name: result.user.name,
+      phone: result.user.phone,
+      topup_code: result.user.topupCode,
+      status: "active",
+      deleted_at: null,
+      is_admin: false,
+      is_provider: false,
+      region: ""
+    };
+    topupCodeSearchStatus.textContent = "تم العثور على المستخدم. يمكنك مراجعة بياناته وإضافة الرصيد.";
+    topupCodeSearchStatus.classList.add("success");
+    showUserDetails(user);
+  } catch (error) {
+    topupCodeSearchStatus.textContent = error.message || "تعذّر البحث عن رمز الشحن.";
+    topupCodeSearchStatus.classList.add("error");
+  } finally {
+    topupCodeSearchButton.disabled = false;
+  }
+}
+topupCodeSearchButton.addEventListener("click", searchTopupCode);
+topupCodeSearch.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") {
+    event.preventDefault();
+    searchTopupCode();
+  }
+});
 let cachedUsers = [];
 let usersLoaded = false;
 let usersLoading = false;
@@ -667,6 +718,7 @@ function showUserDetails(user) {
   const rows = [
     ["الاسم", user.full_name || "اسم غير مضاف"],
     ["رقم الهاتف", user.phone || "—"],
+    ["رمز الشحن", user.topup_code || "—"],
     ["المنطقة", user.region || "—"],
     ["نوع الحساب", user.is_provider ? "مقدّم خدمة" : "مستخدم"],
     ["حالة الحساب", user.deleted_at ? "محذوف" : (user.status || "غير معروف")],
