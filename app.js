@@ -599,7 +599,9 @@ const userDetailsModal = document.getElementById("user-details-modal");
 const userDetailsContent = document.getElementById("user-details-content");
 
 function createWalletTopupCard(user) {
-  if (adminState.role !== "owner" || !isUserActive(user) || user.is_admin) return null;
+  // The lookup API is owner-only; a successful lookup already proves the session is authorized.
+  // Do not block rendering based on the client-side role state, which may not be initialized yet.
+  if (!isUserActive(user) || user.is_admin) return null;
 
   const card = document.createElement("section");
   card.className = "wallet-admin-card";
