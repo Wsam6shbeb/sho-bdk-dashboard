@@ -47,6 +47,8 @@ export async function onRequest({ request, env }) {
     const amount = Number(body.amount);
     const reason = typeof body.reason === "string" ? body.reason.trim() : "";
     const requestId = typeof body.requestId === "string" ? body.requestId.trim() : "";
+    const shamCashTransactionId = typeof body.shamCashTransactionId === "string" ? body.shamCashTransactionId.trim() : "";
+    const thankYouMessage = typeof body.thankYouMessage === "string" ? body.thankYouMessage.trim() : "";
 
     if (!UUID_RE.test(userId)) return json({ error: "معرّف المستخدم غير صالح." }, 400);
     if (!Number.isSafeInteger(amount) || amount <= 0 || amount > 100000) {
@@ -56,6 +58,10 @@ export async function onRequest({ request, env }) {
       return json({ error: "اكتب سبب الإضافة (من 5 إلى 300 حرف)." }, 400);
     }
     if (!UUID_RE.test(requestId)) return json({ error: "معرّف عملية الإضافة غير صالح. أعد المحاولة." }, 400);
+    if (!/^[A-Za-z0-9-]{4,100}$/.test(shamCashTransactionId)) {
+      return json({ error: "أدخل رقم عملية شام كاش صحيحاً (4 إلى 100 رمز)." }, 400);
+    }
+    if (thankYouMessage.length > 300) return json({ error: "رسالة الشكر طويلة جداً." }, 400);
 
     const token = (request.headers.get("Authorization") || "").slice(7);
     const response = await fetch(env.SUPABASE_URL + "/rest/v1/rpc/admin_topup_wallet", {
@@ -69,13 +75,17 @@ export async function onRequest({ request, env }) {
         p_user: userId,
         p_amount: amount,
         p_reason: reason,
-        p_request_id: requestId
+        p_request_id: requestId,
+        p_sham_cash_transaction_id: shamCashTransactionId,
+        p_thank_you_message: thankYouMessage || null
       })
     });
 
     if (!response.ok) {
       const detail = await response.text();
       console.error("admin_topup_wallet failed:", response.status, detail);
+      if (detail.includes("DUPLICATE_SHAM_CASH_TRANSACTION")) return json({ error: "رقم عملية شام كاش مستخدم سابقاً ولا يمكن إضافته مرة ثانية." }, 409);
+      if (detail.includes("INVALID_SHAM_CASH_TRANSACTION_ID")) return json({ error: "رقم عملية شام كاش غير صالح." }, 400);
       if (detail.includes("INVALID_AMOUNT")) return json({ error: "المبلغ غير صالح." }, 400);
       if (detail.includes("AMOUNT_TOO_LARGE")) return json({ error: "المبلغ يتجاوز الحد المسموح للعملية الواحدة." }, 400);
       if (detail.includes("REASON_REQUIRED")) return json({ error: "سبب الإضافة مطلوب (5 أحرف على الأقل)." }, 400);
