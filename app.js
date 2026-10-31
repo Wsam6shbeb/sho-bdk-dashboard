@@ -554,6 +554,18 @@ function createWalletTopupCard(user) {
   amountInput.inputMode = "numeric";
   amountLabel.appendChild(amountInput);
 
+  const transactionLabel = document.createElement("label");
+  transactionLabel.className = "wallet-admin-reason";
+  transactionLabel.textContent = "رقم عملية شام كاش";
+  const transactionInput = document.createElement("input");
+  transactionInput.type = "text";
+  transactionInput.minLength = 4;
+  transactionInput.maxLength = 100;
+  transactionInput.required = true;
+  transactionInput.autocomplete = "off";
+  transactionInput.placeholder = "أدخل رقم العملية كما يظهر في الإيصال";
+  transactionLabel.appendChild(transactionInput);
+
   const reasonLabel = document.createElement("label");
   reasonLabel.className = "wallet-admin-reason";
   reasonLabel.textContent = "سبب الإضافة";
@@ -562,8 +574,17 @@ function createWalletTopupCard(user) {
   reasonInput.minLength = 5;
   reasonInput.maxLength = 300;
   reasonInput.required = true;
-  reasonInput.placeholder = "مثال: تأكيد تحويل شام كاش";
+  reasonInput.value = "تأكيد تحويل شام كاش";
   reasonLabel.appendChild(reasonInput);
+
+  const thankYouLabel = document.createElement("label");
+  thankYouLabel.className = "wallet-admin-reason";
+  thankYouLabel.textContent = "رسالة الشكر التي ستصل للمستخدم";
+  const thankYouInput = document.createElement("textarea");
+  thankYouInput.maxLength = 300;
+  thankYouInput.rows = 3;
+  thankYouInput.value = "شكراً لاستخدامك شو بدك. تم إضافة رصيدك بنجاح.";
+  thankYouLabel.appendChild(thankYouInput);
 
   const submit = document.createElement("button");
   submit.type = "submit";
@@ -572,7 +593,7 @@ function createWalletTopupCard(user) {
   const status = document.createElement("p");
   status.className = "wallet-admin-status helper";
   status.setAttribute("role", "status");
-  form.append(amountLabel, reasonLabel, submit);
+  form.append(amountLabel, transactionLabel, reasonLabel, thankYouLabel, submit);
   card.append(heading, balance, form, status);
 
   let requestId = crypto.randomUUID();
@@ -597,8 +618,10 @@ function createWalletTopupCard(user) {
     event.preventDefault();
     const amount = Number(amountInput.value);
     const reason = reasonInput.value.trim();
-    if (!Number.isSafeInteger(amount) || amount <= 0 || amount > 100000 || reason.length < 5 || reason.length > 300) {
-      status.textContent = "تحقق من المبلغ وسبب الإضافة قبل المتابعة.";
+    const shamCashTransactionId = transactionInput.value.trim();
+    const thankYouMessage = thankYouInput.value.trim();
+    if (!Number.isSafeInteger(amount) || amount <= 0 || amount > 100000 || reason.length < 5 || reason.length > 300 || !/^[A-Za-z0-9-]{4,100}$/.test(shamCashTransactionId) || thankYouMessage.length > 300) {
+      status.textContent = "تحقق من المبلغ ورقم عملية شام كاش وسبب الإضافة قبل المتابعة.";
       status.classList.add("error");
       return;
     }
@@ -615,7 +638,7 @@ function createWalletTopupCard(user) {
           Authorization: "Bearer " + data.session.access_token,
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({ userId: user.id, amount, reason, requestId }),
+        body: JSON.stringify({ userId: user.id, amount, reason, requestId, shamCashTransactionId, thankYouMessage }),
         cache: "no-store"
       });
       const result = await response.json().catch(() => ({}));
@@ -626,7 +649,8 @@ function createWalletTopupCard(user) {
         : "تمت إضافة " + amount.toLocaleString("ar") + " ل.س وتسجيل العملية وإرسال إشعار للمستخدم.";
       status.classList.add("success");
       amountInput.value = "";
-      reasonInput.value = "";
+      transactionInput.value = "";
+      reasonInput.value = "تأكيد تحويل شام كاش";
       requestId = crypto.randomUUID();
     } catch (error) {
       status.textContent = error.message || "تعذّرت إضافة الرصيد. يمكنك إعادة المحاولة بأمان.";
