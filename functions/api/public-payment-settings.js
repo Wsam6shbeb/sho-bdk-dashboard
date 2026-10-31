@@ -16,9 +16,9 @@ export async function onRequest({ request, env }) {
 
   try {
     const keys = ["sham_cash_account_code", "sham_cash_qr_path", "manual_topup_enabled"];
-    const query = keys.map((key) => "key=eq." + encodeURIComponent(key)).join("&");
+    const query = "key=in.(" + keys.join(",") + ")";
     const response = await fetch(
-      env.SUPABASE_URL + "/rest/v1/app_settings?select=key,value&or=(" + query + ")",
+      env.SUPABASE_URL + "/rest/v1/app_settings?select=key,value&" + query,
       { headers: serviceHeaders(env) }
     );
 
