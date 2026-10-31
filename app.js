@@ -1,8 +1,7 @@
 const pages = {
   users: { title: "إدارة المستخدمين", id: "users-page" },
   settings: { title: "إعدادات التطبيق", id: "settings-page" },
-  payments: { title: "شحن الرصيد", id: "payments-page" },
-  support: { title: "طريقة الدعم", id: "support-page" },
+  payments: { title: "إضافة رصيد", id: "payments-page" },
   commission: { title: "العمولة", id: "commission-page" },
   security: { title: "الأمان", id: "security-page" },
   audit: { title: "سجل التدقيق", id: "audit-page" }
@@ -66,7 +65,7 @@ document.querySelectorAll(".nav-item").forEach((button) => {
     document.getElementById(pages[selected].id).classList.remove("hidden");
     document.getElementById("page-title").textContent = pages[selected].title;
     if (selected === "users") loadUsers();
-    if (selected === "payments") loadPaymentSettings();
+    if (selected === "settings") loadPaymentSettings();
     if (selected === "audit") loadAudit();
     if (selected === "security") loadSecurity();
   });
@@ -344,9 +343,27 @@ async function searchTopupCode() {
       is_provider: false,
       region: ""
     };
-    topupCodeSearchStatus.textContent = "تم العثور على المستخدم. يمكنك مراجعة بياناته وإضافة الرصيد.";
+    topupCodeSearchStatus.textContent = "تم العثور على المستخدم. راجع البيانات أدناه قبل تأكيد الإضافة.";
     topupCodeSearchStatus.classList.add("success");
-    showUserDetails(user);
+    const resultPanel = document.getElementById("topup-user-details");
+    resultPanel.replaceChildren();
+    const summary = document.createElement("div");
+    summary.className = "wallet-admin-card";
+    const title = document.createElement("h3");
+    title.textContent = "بيانات المستخدم";
+    const details = document.createElement("p");
+    details.className = "muted";
+    details.textContent = "الاسم: " + (user.full_name || "غير مضاف") + " · الهاتف: " + (user.phone || "—") + " · رمز الشحن: " + user.topup_code;
+    summary.append(title, details);
+    resultPanel.appendChild(summary);
+    const topupCard = createWalletTopupCard(user);
+    if (topupCard) resultPanel.appendChild(topupCard);
+    else {
+      const warning = document.createElement("p");
+      warning.className = "helper error";
+      warning.textContent = "إضافة الرصيد متاحة للمالك فقط وللحسابات المؤهلة.";
+      resultPanel.appendChild(warning);
+    }
   } catch (error) {
     topupCodeSearchStatus.textContent = error.message || "تعذّر البحث عن رمز الشحن.";
     topupCodeSearchStatus.classList.add("error");
@@ -740,8 +757,6 @@ function showUserDetails(user) {
     row.append(labelElement, valueElement);
     userDetailsContent.appendChild(row);
   });
-  const topupCard = createWalletTopupCard(user);
-  if (topupCard) userDetailsContent.appendChild(topupCard);
   userDetailsModal.classList.remove("hidden");
   userDetailsModal.setAttribute("aria-hidden", "false");
 }
