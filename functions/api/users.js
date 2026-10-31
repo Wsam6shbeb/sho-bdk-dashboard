@@ -266,7 +266,7 @@ export async function onRequest({ request, env }) {
     const filterParam = url.searchParams.get("filter") || "all";
     const filter = buildUserFilter(url.searchParams.get("q"), filterParam);
 
-    const select = "id,full_name,phone,region,is_provider,is_admin,verification_status,status,created_at,deleted_at,rating_avg,rating_count";
+    const select = "id,full_name,phone,topup_code,region,is_provider,is_admin,verification_status,status,created_at,deleted_at,rating_avg,rating_count";
     const usersResponse = await supabaseRequest(
       env,
       "/rest/v1/users?select=" + select + filter +
