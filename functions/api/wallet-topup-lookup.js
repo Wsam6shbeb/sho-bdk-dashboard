@@ -33,25 +33,13 @@ export async function onRequest({ request, env }) {
       return json({ error: "هذا الحساب غير مؤهل لاستقبال الرصيد." }, 409);
     }
 
-    const walletResponse = await fetch(
-      env.SUPABASE_URL + "/rest/v1/wallets?select=available_balance,currency&user_id=eq." + user.id + "&limit=1",
-      { headers: serviceHeaders(env) }
-    );
-    if (!walletResponse.ok) return json({ error: "تعذّر قراءة محفظة المستخدم." }, 502);
-    const wallets = await walletResponse.json();
-    if (!Array.isArray(wallets) || wallets.length !== 1) {
-      return json({ error: "لم يتم العثور على محفظة لهذا المستخدم." }, 404);
-    }
-
     return json({
       user: {
         id: user.id,
         name: user.full_name || "",
         phone: user.phone || "",
         topupCode: user.topup_code
-      },
-      balance: Number(wallets[0].available_balance),
-      currency: wallets[0].currency || "SYP"
+      }
     });
   } catch (error) {
     console.error("Top-up code lookup failed:", error);
