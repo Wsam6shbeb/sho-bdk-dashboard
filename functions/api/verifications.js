@@ -148,6 +148,7 @@ async function decide(env, auth, request) {
     if (text.includes("ALREADY_DECIDED")) return json({ error: "تم اتخاذ قرار بهذا الطلب مسبقاً." }, 409);
     if (text.includes("VERIFICATION_NOT_FOUND")) return json({ error: "الطلب غير موجود." }, 404);
     if (text.includes("REASON_REQUIRED")) return json({ error: "اكتب سبب الرفض." }, 400);
+    if (text.includes("FORBIDDEN")) return json({ error: "لم تعد تملك صلاحية مراجعة التوثيق." }, 403);
     console.error("decide_verification failed:", response.status, text);
     return json({ error: "تعذّر حفظ القرار." }, 502);
   }
