@@ -32,7 +32,9 @@ export async function onRequest({ request, env }) {
         "notification_retention_days",
         "rating_window_hours",
         "signup_bonus_amount",
-        "test_topup_enabled"
+        "test_topup_enabled",
+        "home_tips",
+        "home_tips_interval_seconds"
       ];
       const allKeys = keys + ",support_email,support_phone,dashboard_require_mfa," + appKeys.join(",");
       const response = await supabaseRequest(
@@ -69,7 +71,9 @@ export async function onRequest({ request, env }) {
           "notification_retention_days",
           "rating_window_hours",
           "signup_bonus_amount",
-          "test_topup_enabled"
+          "test_topup_enabled",
+          "home_tips",
+          "home_tips_interval_seconds"
         ].map((key) => [key, rawValues[key] ?? null]))
       });
     }
@@ -190,6 +194,37 @@ export async function onRequest({ request, env }) {
         changes: changes(appBefore, Object.fromEntries(entries.map(([key, value]) => [key, key === "launch_region" ? value.trim() : value])))
       });
       return json({ success: true, settings });
+    }
+
+    if (body?.action === "home-tips") {
+      if (auth.role !== "owner") return json({ error: "هذا الإعداد متاح للمالك فقط." }, 403);
+      const tips = body.tips;
+      const interval = body.intervalSeconds;
+      if (!Array.isArray(tips) || tips.length > 30 ||
+          !tips.every((tip) => tip && typeof tip.id === "string" && tip.id.length <= 40 &&
+            typeof tip.text === "string" && tip.text.trim().length >= 1 &&
+            tip.text.trim().length <= 300 && typeof tip.enabled === "boolean") ||
+          !Number.isInteger(interval) || interval < 3 || interval > 60 ||
+          new Set(tips.map((tip) => tip.id)).size !== tips.length) {
+        return json({ error: "تحقق من نصوص التلميحات وترتيبها والمدة (3–60 ثانية)." }, 400);
+      }
+      const before = await readSettings(env, ["home_tips", "home_tips_interval_seconds"]);
+      for (const [key, value] of [["home_tips", tips.map((tip) => ({...tip, text: tip.text.trim()}))], ["home_tips_interval_seconds", interval]]) {
+        const saved = await supabaseRequest(env, "/rest/v1/app_settings?on_conflict=key", {
+          method: "POST",
+          headers: { Prefer: "resolution=merge-duplicates,return=representation" },
+          body: JSON.stringify({ key, value })
+        });
+        const rows = saved.ok ? await saved.json() : [];
+        if (!saved.ok || !Array.isArray(rows) || rows.length !== 1) {
+          return json({ error: "تعذّر تأكيد حفظ إعدادات التلميحات. أعد تحميلها للتحقق." }, 502);
+        }
+      }
+      await audit(env, auth.user.id, "admin_update_settings", "app_settings", null, {
+        section: "home-tips",
+        changes: changes(before, { home_tips: tips, home_tips_interval_seconds: interval })
+      });
+      return json({ success: true, tips, intervalSeconds: interval });
     }
 
     if (body?.action === "commission-settings") {

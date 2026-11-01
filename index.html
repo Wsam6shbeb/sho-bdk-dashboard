@@ -202,6 +202,15 @@
           <button id="save-app-settings" class="primary-button" type="submit">حفظ إعدادات التطبيق</button>
         </form>
         <div class="panel note-panel"><strong>مهم</strong><p>لن تتغير أي قيمة إلا بعد الضغط على حفظ. يتم التحقق من الصلاحية والقيم على الخادم قبل تحديث قاعدة البيانات.</p></div>
+        <div class="panel home-tips-panel">
+          <h3>التلميحات السريعة في الصفحة الرئيسية</h3>
+          <p class="muted">عدّل النصوص، فعّل أو أخفِ كل تلميح، وغيّر ترتيبها. كل سطر يمثل تلميحاً مستقلاً.</p>
+          <div id="home-tips-list"></div>
+          <button id="add-home-tip" class="secondary-button" type="button">إضافة تلميح</button>
+          <div class="setting-field"><label for="home-tips-interval">مدة عرض كل تلميح (ثانية)</label><input id="home-tips-interval" type="number" min="3" max="60" step="1" value="6"></div>
+          <p id="home-tips-status" class="helper" role="status">جارٍ تحميل التلميحات…</p>
+          <button id="save-home-tips" class="primary-button" type="button">حفظ التلميحات</button>
+        </div>
         <div class="panel payment-settings-panel">
         <h3>بيانات شام كاش التي تظهر للمستخدمين</h3>
         <form id="payment-settings-form" class="panel payment-settings-panel">
