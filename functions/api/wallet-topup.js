@@ -91,7 +91,7 @@ export async function onRequest({ request, env }) {
       if (detail.includes("REASON_REQUIRED")) return json({ error: "سبب الإضافة مطلوب (5 أحرف على الأقل)." }, 400);
       if (detail.includes("USER_NOT_ELIGIBLE")) return json({ error: "يمكن إضافة الرصيد للحسابات الفعّالة غير الإدارية فقط." }, 409);
       if (detail.includes("WALLET_NOT_FOUND")) return json({ error: "لم يتم العثور على محفظة المستخدم." }, 404);
-      if (detail.includes("OWNER_ONLY") || response.status === 403) return json({ error: "إضافة الرصيد متاحة للمالك والدعم فقط." }, 403);
+      if (detail.includes("OWNER_ONLY") || detail.includes("FORBIDDEN") || response.status === 403) return json({ error: "لا تملك صلاحية إضافة الرصيد." }, 403);
       return json({ error: "تعذّر إضافة الرصيد. لم يتم تأكيد العملية." }, 502);
     }
 
