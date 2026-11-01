@@ -88,7 +88,7 @@ export async function authorizeAdmin(request, env, { requireOwner = false } = {}
     : null;
   if (!role) return { error: DENIED() };
 
-  // التحقق بخطوتين: يُفرض فقط عندما يُفعَّل الإعداد dashboard_require_mfa (بعد أن يسجّل المدير جهازه)
+  // التحقق بخطوتين: إلزامي دائماً لحسابات لوحة التحكم؛ الإعداد يجب أن يكون true صراحةً.
   const aal = jwtClaims(token).aal || "aal1";
   const mfaResponse = await fetch(
     env.SUPABASE_URL + "/rest/v1/app_settings?select=value&key=eq.dashboard_require_mfa",
