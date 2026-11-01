@@ -11,7 +11,7 @@ const env = {
 
 function token(claims) {
   const enc = (o) => Buffer.from(JSON.stringify(o)).toString("base64url");
-  return enc({ alg: "HS256" }) + "." + enc(claims) + ".sig";
+  return enc({ alg: "HS256" }) + "." + enc({ ...claims, aal: claims.aal ?? "aal2" }) + ".sig";
 }
 
 // Mock for the three upstream calls the authorizer makes.
