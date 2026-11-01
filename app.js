@@ -1085,7 +1085,7 @@ function applyAdminState(settings) {
     .forEach((button) => {
       if (!button) return;
       if (readOnly) button.disabled = true;
-      button.title = readOnly ? "دور الدعم للقراءة فقط" : "";
+      button.title = readOnly ? "صلاحيات الدعم لا تشمل إعدادات النظام" : "";
     });
 }
 
