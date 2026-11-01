@@ -88,11 +88,11 @@ export async function onRequest({ request, env }) {
     if (body?.action === "security") {
       // Requiring MFA for everyone is only allowed from a session that already passed MFA (aal2),
       // otherwise the owner could lock themselves out of the dashboard.
-      if (typeof body.requireMfa !== "boolean") {
-        return json({ error: "قيمة الإعداد غير صالحة." }, 400);
+      if (body.requireMfa !== true) {
+        return json({ error: "التحقق بخطوتين إلزامي دائماً ولا يمكن تعطيله من لوحة التحكم." }, 400);
       }
-      if (body.requireMfa && auth.aal !== "aal2") {
-        return json({ error: "سجّل جهاز التحقق بخطوتين وادخل بجلسة محقَّقة قبل إلزامه." }, 400);
+      if (auth.aal !== "aal2") {
+        return json({ error: "يلزم إتمام التحقق بخطوتين أولاً." }, 400);
       }
       const securityBefore = await readSettings(env, ["dashboard_require_mfa"]);
       const saved = await supabaseRequest(env, "/rest/v1/app_settings?key=eq.dashboard_require_mfa", {
