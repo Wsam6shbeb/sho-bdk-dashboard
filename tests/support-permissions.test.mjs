@@ -4,6 +4,8 @@ import assert from "node:assert/strict";
 import { onRequest as verificationsRequest } from "../functions/api/verifications.js";
 import { onRequest as walletTopupRequest } from "../functions/api/wallet-topup.js";
 import { onRequest as walletLookupRequest } from "../functions/api/wallet-topup-lookup.js";
+import { onRequest as usersRequest } from "../functions/api/users.js";
+import { onRequest as settingsRequest } from "../functions/api/settings.js";
 
 const ADMIN_ID = "11111111-1111-4111-8111-111111111111";
 const USER_ID = "22222222-2222-4222-8222-222222222222";
@@ -132,4 +134,32 @@ test("support can read a wallet and submit a manual top-up", async () => {
   });
   assert.equal(write.status, 200);
   assert.equal(calls.some((call) => call.url.includes("/rest/v1/rpc/admin_topup_wallet")), true);
+});
+
+test("support cannot change system settings, suspend users, or delete accounts", async () => {
+  installSupportFetch();
+
+  const settings = await settingsRequest({
+    request: makeRequest("POST", "/api/settings", {
+      action: "app-settings",
+      settings: { signup_bonus_amount: 10 }
+    }),
+    env
+  });
+  assert.equal(settings.status, 403);
+
+  const suspend = await usersRequest({
+    request: makeRequest("PATCH", "/api/users", {
+      userId: USER_ID,
+      status: "suspended"
+    }),
+    env
+  });
+  assert.equal(suspend.status, 403);
+
+  const remove = await usersRequest({
+    request: makeRequest("DELETE", "/api/users", { userId: USER_ID }),
+    env
+  });
+  assert.equal(remove.status, 403);
 });
