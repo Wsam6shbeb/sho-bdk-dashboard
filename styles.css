@@ -196,19 +196,34 @@ textarea:disabled {
 }
 
 .home-tip-row {
-  grid-template-columns: minmax(0, 1fr) auto auto;
-  gap: 12px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px 12px;
   padding: 16px 0;
   border-bottom: 1px solid #d0d5dd;
 }
 
 .home-tip-row textarea {
+  grid-column: 1 / -1;
   display: block;
+  box-sizing: border-box;
   width: 100%;
   min-width: 0;
-  min-height: 76px;
+  min-height: 88px;
   padding: 12px;
   resize: vertical;
+}
+
+.home-tip-row > label {
+  grid-column: 1;
+  align-self: center;
+  min-width: 0;
+}
+
+.home-tip-row .home-tip-actions {
+  grid-column: 2;
+  justify-self: end;
+  align-self: center;
+  flex-wrap: wrap;
 }
 
 .home-tips-panel > .setting-field {
@@ -226,7 +241,7 @@ textarea:disabled {
 @media (max-width: 650px) {
   .home-tip-row {
     grid-template-columns: minmax(0, 1fr) auto;
-    gap: 10px;
+    gap: 10px 12px;
   }
 
   .home-tip-row textarea {
@@ -234,8 +249,8 @@ textarea:disabled {
     min-height: 88px;
   }
 
-  .home-tip-actions {
-    grid-column: 1 / -1;
+  .home-tip-row .home-tip-actions {
+    grid-column: 2;
   }
 }
 
