@@ -1,6 +1,6 @@
 import { authorizeAdmin, json } from "../_lib/admin.js";
 
-// مراجعة طلبات التوثيق (للمالك فقط). الصور تُقرأ من bucket خاص بمفتاح الخادم،
+// مراجعة طلبات التوثيق للمالك والدعم. الصور تُقرأ من bucket خاص بمفتاح الخادم،
 // وتُمرَّر للمتصفح من نفس الأصل بدون روابط عامة، وكل فتح لصورة يُسجَّل في audit_log.
 
 const BUCKET = "verification-docs";
@@ -163,8 +163,8 @@ export async function onRequest({ request, env }) {
     return json({ error: "طريقة الطلب غير مدعومة." }, 405);
   }
   try {
-    // كل العمليات للمالك فقط: الصور حساسة.
-    const auth = await authorizeAdmin(request, env, { requireOwner: true });
+    // يسمح للمالك والدعم بمراجعة التوثيق؛ كل فتح لصورة يُسجّل في سجل التدقيق.
+    const auth = await authorizeAdmin(request, env);
     if (auth.error) return auth.error;
 
     if (request.method === "POST") return await decide(env, auth, request);
