@@ -14,7 +14,7 @@ export async function onRequest({ request, env }) {
   if (request.method !== "GET") return json({ error: "طريقة الطلب غير مدعومة." }, 405);
 
   try {
-    const auth = await authorizeAdmin(request, env, { requireOwner: true });
+    const auth = await authorizeAdmin(request, env);
     if (auth.error) return auth.error;
 
     const code = (new URL(request.url).searchParams.get("code") || "").trim().toUpperCase();
