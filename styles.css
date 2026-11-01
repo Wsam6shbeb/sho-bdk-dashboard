@@ -143,3 +143,35 @@
 .wallet-admin-form button{grid-column:1/-1;justify-self:start}
 .wallet-admin-status{font-size:11px;line-height:1.7;margin:8px 0 0}
 @media(max-width:650px){.payment-settings-grid{grid-template-columns:1fr}.payment-enable-row{align-items:flex-start;flex-direction:column}.wallet-admin-form{grid-template-columns:1fr}}
+
+
+/* Improved contrast for dashboard form controls */
+input:not([type="checkbox]):not([type="radio"]),
+select,
+textarea {
+  border: 1px solid #98a2b3 !important;
+  background-color: #fff !important;
+  color: #182230;
+}
+
+input:not([type="checkbox]):not([type="radio"]):hover,
+select:hover,
+textarea:hover {
+  border-color: #667085 !important;
+}
+
+input:not([type="checkbox]):not([type="radio"]):focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: #3157a4 !important;
+  box-shadow: 0 0 0 3px rgba(49, 87, 164, 0.16) !important;
+}
+
+input:disabled,
+select:disabled,
+textarea:disabled {
+  background-color: #f2f4f7 !important;
+  border-color: #cbd2dc !important;
+  cursor: not-allowed;
+}
