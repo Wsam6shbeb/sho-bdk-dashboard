@@ -238,3 +238,12 @@ textarea:disabled {
     grid-column: 1 / -1;
   }
 }
+
+
+/* Separators between application settings save sections */
+.settings-divider {
+  border: 0;
+  border-top: 1px solid #d0d5dd;
+  margin: 22px 0 4px;
+  width: 100%;
+}
