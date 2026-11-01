@@ -443,7 +443,7 @@ async function searchTopupCode() {
     else {
       const warning = document.createElement("p");
       warning.className = "helper error";
-      warning.textContent = "إضافة الرصيد متاحة للمالك فقط وللحسابات المؤهلة.";
+      warning.textContent = "إضافة الرصيد متاحة للمالك والدعم وللحسابات المؤهلة.";
       resultPanel.appendChild(warning);
     }
   } catch (error) {
@@ -681,7 +681,7 @@ const userDetailsModal = document.getElementById("user-details-modal");
 const userDetailsContent = document.getElementById("user-details-content");
 
 function createWalletTopupCard(user) {
-  // The lookup API is owner-only; a successful lookup already proves the session is authorized.
+  // The lookup API authorizes both owner and support; a successful lookup confirms access.
   // Do not block rendering based on the client-side role state, which may not be initialized yet.
   if (!isUserActive(user) || user.is_admin) return null;
 
@@ -1178,7 +1178,7 @@ async function loadSecurity() {
   const state = document.getElementById("security-mfa-state");
   const enrollButton = document.getElementById("security-enroll-button");
   const requireSelect = document.getElementById("security-require-mfa");
-  document.getElementById("security-role").textContent = adminState.role === "support" ? "دعم (قراءة فقط)" : "مالك";
+  document.getElementById("security-role").textContent = adminState.role === "support" ? "دعم (التوثيق والرصيد)" : "مالك";
   requireSelect.value = String(adminState.requireMfa);
   const { data } = await supabaseClient.auth.mfa.listFactors();
   const verified = (data?.totp || []).some((item) => item.status === "verified");
