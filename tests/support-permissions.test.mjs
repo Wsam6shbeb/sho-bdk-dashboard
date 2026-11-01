@@ -50,7 +50,10 @@ function installSupportFetch() {
     if (value.includes("/rest/v1/rpc/decide_verification")) {
       return response({ id: VERIFICATION_ID, status: "approved" });
     }
-    if (value.includes("/rest/v1/users?select=id,full_name,phone,topup_code")) {\n      return response([{ id: USER_ID, full_name: "مستخدم تجريبي", phone: "09XXXXXXXX", topup_code: "SHB-ABCDEF1234", status: "active", deleted_at: null, is_admin: false }]);\n    }\n    if (value.includes("/rest/v1/wallets?select=available_balance")) {
+    if (value.includes("/rest/v1/users?select=id,full_name,phone,topup_code")) {
+      return response([{ id: USER_ID, full_name: "مستخدم تجريبي", phone: "09XXXXXXXX", topup_code: "SHB-ABCDEF1234", status: "active", deleted_at: null, is_admin: false }]);
+    }
+    if (value.includes("/rest/v1/wallets?select=available_balance")) {
       return response([{ available_balance: 1250, currency: "SYP" }]);
     }
     if (value.includes("/rest/v1/rpc/admin_topup_wallet")) {
