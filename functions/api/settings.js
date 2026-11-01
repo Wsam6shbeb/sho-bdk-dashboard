@@ -32,7 +32,9 @@ export async function onRequest({ request, env }) {
         "notification_retention_days",
         "rating_window_hours",
         "signup_bonus_amount",
-        "test_topup_enabled"
+        "test_topup_enabled",
+        "home_tips",
+        "home_tips_interval_seconds"
       ];
       const allKeys = keys + ",support_email,support_phone,dashboard_require_mfa," + appKeys.join(",");
       const response = await supabaseRequest(
@@ -69,7 +71,9 @@ export async function onRequest({ request, env }) {
           "notification_retention_days",
           "rating_window_hours",
           "signup_bonus_amount",
-          "test_topup_enabled"
+          "test_topup_enabled",
+          "home_tips",
+          "home_tips_interval_seconds"
         ].map((key) => [key, rawValues[key] ?? null]))
       });
     }
