@@ -754,9 +754,40 @@ function showUserDetails(user) {
     row.className = "user-detail-row";
     const labelElement = document.createElement("span");
     labelElement.textContent = label;
-    const valueElement = document.createElement("strong");
-    valueElement.textContent = value;
-    row.append(labelElement, valueElement);
+    if (label === "رمز الشحن") {
+      const valueContainer = document.createElement("div");
+      valueContainer.className = "user-detail-value-with-copy";
+      const valueElement = document.createElement("strong");
+      valueElement.textContent = value;
+      const copyButton = document.createElement("button");
+      copyButton.type = "button";
+      copyButton.className = "secondary-button user-topup-copy-button";
+      copyButton.textContent = "نسخ";
+      copyButton.disabled = !user.topup_code;
+      copyButton.setAttribute("aria-label", "نسخ رمز شحن المستخدم");
+      copyButton.addEventListener("click", async () => {
+        try {
+          await navigator.clipboard.writeText(String(user.topup_code));
+          copyButton.textContent = "تم النسخ";
+          copyButton.classList.add("success");
+          window.setTimeout(() => {
+            copyButton.textContent = "نسخ";
+            copyButton.classList.remove("success");
+          }, 1500);
+        } catch {
+          copyButton.textContent = "تعذّر النسخ";
+          window.setTimeout(() => {
+            copyButton.textContent = "نسخ";
+          }, 1800);
+        }
+      });
+      valueContainer.append(valueElement, copyButton);
+      row.append(labelElement, valueContainer);
+    } else {
+      const valueElement = document.createElement("strong");
+      valueElement.textContent = value;
+      row.append(labelElement, valueElement);
+    }
     userDetailsContent.appendChild(row);
   });
   userDetailsModal.classList.remove("hidden");
