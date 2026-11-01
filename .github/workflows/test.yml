@@ -1,6 +1,8 @@
 name: Dashboard tests
 
 on:
+  push:
+    branches: [fix/dashboard-launch-security]
   pull_request:
     branches: [main]
   workflow_dispatch:
