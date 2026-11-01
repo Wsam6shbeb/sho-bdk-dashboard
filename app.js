@@ -258,7 +258,15 @@ async function loadHomeTips() {
     const { data, error } = await supabaseClient.auth.getSession();
     if (error || !data.session) throw new Error("انتهت جلسة الدخول.");
     const result = await callSettingsApi(data.session);
-    homeTipsDraft = Array.isArray(result.appSettings?.home_tips) ? result.appSettings.home_tips : [];
+    homeTipsDraft = Array.isArray(result.appSettings?.home_tips) ? result.appSettings.home_tips : [
+      { id: "tip-1", text: "اطلب الخدمة التي تريدها بلغتك العادية، ودع الباقي علينا.", enabled: true },
+      { id: "tip-2", text: "إذا كانت خدمتك عاجلة، فاضغط زر البرق.", enabled: true },
+      { id: "tip-3", text: "يمكنك التواصل مع ثلاثة مقدّمي خدمات في الوقت نفسه، ومقارنة الأسعار قبل الاختيار.", enabled: true },
+      { id: "tip-4", text: "لن يظهر رقم هاتفك للآخرين إلا إذا اخترت مشاركته.", enabled: true },
+      { id: "tip-5", text: "إذا كنت تقدّم إحدى الخدمات، احرص على تعبئة رصيدك لضمان ظهورك في نتائج البحث.", enabled: true },
+      { id: "tip-6", text: "يمكنك طلب توثيق حساب الطرف الآخر إذا كانت طبيعة خدماتك تتطلب ذلك.", enabled: true },
+      { id: "tip-7", text: "التوثيق خطوة لزيادة الثقة، لكنه لا يضمن سلامة التعامل.", enabled: true }
+    ];
     homeTipsInterval.value = String(result.appSettings?.home_tips_interval_seconds ?? 6);
     renderHomeTips();
     homeTipsStatus.textContent = "تم تحميل التلميحات المحفوظة.";
