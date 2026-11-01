@@ -23,6 +23,11 @@ const supportPhoneInput = document.getElementById("support-phone");
 const supportStatus = document.getElementById("support-status");
 const saveSupportButton = document.getElementById("save-support");
 const appSettingsForm = document.getElementById("app-settings-form");
+const homeTipsList = document.getElementById("home-tips-list");
+const homeTipsInterval = document.getElementById("home-tips-interval");
+const homeTipsStatus = document.getElementById("home-tips-status");
+const saveHomeTipsButton = document.getElementById("save-home-tips");
+let homeTipsDraft = [];
 const paymentSettingsForm = document.getElementById("payment-settings-form");
 const paymentSettingsStatus = document.getElementById("payment-settings-status");
 const savePaymentSettingsButton = document.getElementById("save-payment-settings");
@@ -65,7 +70,7 @@ document.querySelectorAll(".nav-item").forEach((button) => {
     document.getElementById(pages[selected].id).classList.remove("hidden");
     document.getElementById("page-title").textContent = pages[selected].title;
     if (selected === "users") loadUsers();
-    if (selected === "settings") loadPaymentSettings();
+    if (selected === "settings") { loadPaymentSettings(); loadHomeTips(); }
     if (selected === "audit") loadAudit();
     if (selected === "security") loadSecurity();
   });
@@ -219,6 +224,77 @@ paymentSettingsForm.addEventListener("submit", async (event) => {
   } finally {
     savePaymentSettingsButton.disabled = adminState.role !== "owner";
   }
+});
+
+function renderHomeTips() {
+  homeTipsList.replaceChildren();
+  homeTipsDraft.forEach((tip, index) => {
+    const row = document.createElement("div");
+    row.className = "home-tip-row";
+    const input = document.createElement("textarea");
+    input.rows = 2; input.maxLength = 300; input.value = tip.text;
+    input.setAttribute("aria-label", "نص التلميح " + (index + 1));
+    input.addEventListener("input", () => { homeTipsDraft[index].text = input.value; });
+    const enabledLabel = document.createElement("label");
+    const enabled = document.createElement("input");
+    enabled.type = "checkbox"; enabled.checked = tip.enabled;
+    enabled.addEventListener("change", () => { homeTipsDraft[index].enabled = enabled.checked; });
+    enabledLabel.append(enabled, document.createTextNode(" ظاهر"));
+    const actions = document.createElement("div");
+    actions.className = "home-tip-actions";
+    [["↑", index > 0, () => { [homeTipsDraft[index-1], homeTipsDraft[index]] = [homeTipsDraft[index], homeTipsDraft[index-1]]; renderHomeTips(); }],
+     ["↓", index < homeTipsDraft.length-1, () => { [homeTipsDraft[index+1], homeTipsDraft[index]] = [homeTipsDraft[index], homeTipsDraft[index+1]]; renderHomeTips(); }],
+     ["حذف", true, () => { homeTipsDraft.splice(index,1); renderHomeTips(); }]].forEach(([label, active, action]) => {
+       const button = document.createElement("button"); button.type = "button"; button.className = "secondary-button";
+       button.textContent = label; button.disabled = !active; button.addEventListener("click", action); actions.append(button);
+     });
+    row.append(input, enabledLabel, actions); homeTipsList.append(row);
+  });
+}
+async function loadHomeTips() {
+  homeTipsStatus.textContent = "جارٍ تحميل التلميحات…";
+  saveHomeTipsButton.disabled = true;
+  try {
+    const { data, error } = await supabaseClient.auth.getSession();
+    if (error || !data.session) throw new Error("انتهت جلسة الدخول.");
+    const result = await callSettingsApi(data.session);
+    homeTipsDraft = Array.isArray(result.appSettings?.home_tips) ? result.appSettings.home_tips : [];
+    homeTipsInterval.value = String(result.appSettings?.home_tips_interval_seconds ?? 6);
+    renderHomeTips();
+    homeTipsStatus.textContent = "تم تحميل التلميحات المحفوظة.";
+    saveHomeTipsButton.disabled = adminState.role !== "owner";
+  } catch (error) {
+    homeTipsStatus.textContent = error.message || "تعذّر تحميل التلميحات.";
+    homeTipsStatus.classList.add("error");
+  }
+}
+document.getElementById("add-home-tip").addEventListener("click", () => {
+  if (homeTipsDraft.length >= 30) return;
+  homeTipsDraft.push({ id: "tip-" + Date.now().toString(36), text: "", enabled: true });
+  renderHomeTips();
+});
+saveHomeTipsButton.addEventListener("click", async () => {
+  if (adminState.role !== "owner") return;
+  saveHomeTipsButton.disabled = true;
+  homeTipsStatus.classList.remove("error", "success");
+  homeTipsStatus.textContent = "جارٍ حفظ التلميحات…";
+  try {
+    const { data, error } = await supabaseClient.auth.getSession();
+    if (error || !data.session) throw new Error("انتهت جلسة الدخول.");
+    const response = await fetch("/api/settings", {
+      method: "POST",
+      headers: { Authorization: "Bearer " + data.session.access_token, "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "home-tips", tips: homeTipsDraft, intervalSeconds: Number(homeTipsInterval.value) })
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(result.error || "تعذّر حفظ التلميحات.");
+    homeTipsDraft = result.tips; renderHomeTips();
+    homeTipsStatus.textContent = "تم حفظ التلميحات والمدة بنجاح.";
+    homeTipsStatus.classList.add("success");
+  } catch (error) {
+    homeTipsStatus.textContent = error.message || "تعذّر حفظ التلميحات.";
+    homeTipsStatus.classList.add("error");
+  } finally { saveHomeTipsButton.disabled = adminState.role !== "owner"; }
 });
 
 async function enterDashboard(session) {
