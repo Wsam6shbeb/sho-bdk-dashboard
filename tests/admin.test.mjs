@@ -61,8 +61,8 @@ test("normal user -> 403", async () => {
   assert.equal(r.error.status, 403);
 });
 
-test("is_admin owner passes; NULL role = owner", async () => {
-  mockFetch({ user: goodUser, dbRow: { is_admin: true, admin_role: null, status: "active" } });
+test("explicit owner role passes", async () => {
+  mockFetch({ user: goodUser, dbRow: { is_admin: true, admin_role: "owner", status: "active" } });
   const r = await authorizeAdmin(req(token({})), env, { requireOwner: true });
   assert.equal(r.role, "owner");
 });
@@ -100,7 +100,7 @@ test("unknown or NULL admin role is denied", async () => {
 });
 
 test("MFA required: aal1 is refused with a code, aal2 passes", async () => {
-  mockFetch({ user: goodUser, dbRow: { is_admin: true, status: "active" }, mfaRequired: true });
+  mockFetch({ user: goodUser, dbRow: { is_admin: true, admin_role: "owner", status: "active" }, mfaRequired: true });
   const low = await authorizeAdmin(req(token({ aal: "aal1" })), env);
   assert.equal(low.error.status, 401);
   assert.equal((await low.error.json()).code, "MFA_REQUIRED");
@@ -109,7 +109,7 @@ test("MFA required: aal1 is refused with a code, aal2 passes", async () => {
 });
 
 test("MFA setting lookup failure is denied safely", async () => {
-  mockFetch({ user: goodUser, dbRow: { is_admin: true, status: "active" }, mfaOk: false });
+  mockFetch({ user: goodUser, dbRow: { is_admin: true, admin_role: "owner", status: "active" }, mfaOk: false });
   const r = await authorizeAdmin(req(token({ aal: "aal1" })), env);
   assert.equal(r.error.status, 503);
   assert.equal((await r.error.json()).error.includes("إعدادات الأمان"), true);
