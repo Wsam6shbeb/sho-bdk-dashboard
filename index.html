@@ -308,11 +308,10 @@
           <button id="security-enroll-button" class="secondary-button hidden" type="button">تفعيل التحقق بخطوتين لحسابي</button>
           <div class="setting-field">
             <label for="security-require-mfa">إلزام التحقق بخطوتين لكل دخول إلى اللوحة</label>
-            <select id="security-require-mfa">
-              <option value="false">غير إلزامي</option>
-              <option value="true">إلزامي</option>
+            <select id="security-require-mfa" disabled>
+              <option value="true">إلزامي دائماً</option>
             </select>
-            <small>لا يمكن تفعيل الإلزام إلا بعد أن تسجّل جهازك وتدخل بجلسة محقَّقة بخطوتين، حتى لا تُقفل خارج اللوحة.</small>
+            <small>التحقق بخطوتين شرط دائم لدخول لوحة التحكم، ولا يمكن تعطيله من الإعدادات.</small>
           </div>
           <p id="security-status" class="helper" role="status"></p>
           <button id="save-security" class="primary-button" type="button">حفظ إعداد الأمان</button>
