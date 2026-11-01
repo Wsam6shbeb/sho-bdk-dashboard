@@ -93,8 +93,8 @@
     statusLine.classList.toggle("error", Boolean(isError));
   }
 
-  function ownerOnly() {
-    return typeof adminState !== "undefined" && adminState.role === "support";
+  function supportOnly() {
+    return typeof adminState !== "undefined" && adminState.role !== "owner" && adminState.role !== "support";
   }
 
   // ---------------------------------------------------------------- القائمة
@@ -136,9 +136,9 @@
 
   async function loadList() {
     if (loading) return;
-    if (ownerOnly()) {
+    if (supportOnly()) {
       tableBody.replaceChildren();
-      setStatus("هذه الصفحة للمالك فقط.", true);
+      setStatus("هذه الصفحة متاحة للمالك والدعم فقط.", true);
       return;
     }
     loading = true;
