@@ -3,6 +3,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { onRequest as verificationsRequest } from "../functions/api/verifications.js";
 import { onRequest as walletTopupRequest } from "../functions/api/wallet-topup.js";
+import { onRequest as walletLookupRequest } from "../functions/api/wallet-topup-lookup.js";
 
 const ADMIN_ID = "11111111-1111-4111-8111-111111111111";
 const USER_ID = "22222222-2222-4222-8222-222222222222";
@@ -49,7 +50,7 @@ function installSupportFetch() {
     if (value.includes("/rest/v1/rpc/decide_verification")) {
       return response({ id: VERIFICATION_ID, status: "approved" });
     }
-    if (value.includes("/rest/v1/wallets?select=available_balance")) {
+    if (value.includes("/rest/v1/users?select=id,full_name,phone,topup_code")) {\n      return response([{ id: USER_ID, full_name: "مستخدم تجريبي", phone: "09XXXXXXXX", topup_code: "SHB-ABCDEF1234", status: "active", deleted_at: null, is_admin: false }]);\n    }\n    if (value.includes("/rest/v1/wallets?select=available_balance")) {
       return response([{ available_balance: 1250, currency: "SYP" }]);
     }
     if (value.includes("/rest/v1/rpc/admin_topup_wallet")) {
@@ -93,6 +94,17 @@ test("support can submit a verification decision through the protected API", asy
   });
   assert.equal(result.status, 200);
   assert.equal(calls.some((call) => call.url.includes("/rest/v1/rpc/decide_verification")), true);
+});
+
+
+test("support can look up a wallet by its top-up code", async () => {
+  installSupportFetch();
+  const result = await walletLookupRequest({
+    request: makeRequest("GET", "/api/wallet-topup-lookup?code=SHB-ABCDEF1234"),
+    env
+  });
+  assert.equal(result.status, 200);
+  assert.equal((await result.json()).user.id, USER_ID);
 });
 
 test("support can read a wallet and submit a manual top-up", async () => {
