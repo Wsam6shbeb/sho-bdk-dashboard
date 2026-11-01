@@ -57,26 +57,35 @@ export async function authorizeAdmin(request, env, { requireOwner = false } = {}
   // الإيميل لازم يكون مؤكَّداً (حماية من تسجيل حساب بإيميل المدير بدون تحقق)
   if (!user?.id || !user.email || !user.email_confirmed_at) return { error: DENIED() };
 
-  // حساب المالك الأساسي محدد سراً عبر ADMIN_EMAIL، ولا يجوز أن تؤدي حالة سجل التطبيق
-  // أو حذفه أو تعديل is_admin إلى قفل المالك خارج لوحة التحكم.
-  const isPrimaryOwner = Boolean(
-    env.ADMIN_EMAIL && user.email.toLowerCase() === env.ADMIN_EMAIL.trim().toLowerCase()
+  // جميع حسابات الإدارة، بما فيها المالك، تُعتمد حصراً من سجل users.
+  // لا يوجد تجاوز عبر ADMIN_EMAIL؛ فشل قراءة سجل الصلاحيات يعني رفض الدخول.
+  const rowsResponse = await fetch(
+    env.SUPABASE_URL + "/rest/v1/users?select=is_admin,admin_role,status,deleted_at&id=eq." + encodeURIComponent(user.id),
+    { headers: serviceHeaders(env) }
   );
-  let role = isPrimaryOwner ? "owner" : null;
-
-  if (!isPrimaryOwner) {
-    const rowsResponse = await fetch(
-      env.SUPABASE_URL + "/rest/v1/users?select=is_admin,admin_role,status,deleted_at&id=eq." + encodeURIComponent(user.id),
-      { headers: serviceHeaders(env) }
-    );
-    if (rowsResponse.ok) {
-      const rows = await rowsResponse.json();
-      const row = Array.isArray(rows) ? rows[0] || null : null;
-      if (row && row.is_admin === true && !row.deleted_at && (row.status == null || row.status === "active")) {
-        role = row.admin_role === "support" ? "support" : "owner";
-      }
-    }
+  if (!rowsResponse.ok) {
+    console.error("Admin role lookup failed:", rowsResponse.status, await rowsResponse.text());
+    return { error: json({ error: "تعذّر التحقق من صلاحيات الحساب. حاول مجدداً." }, 503) };
   }
+
+  let rows;
+  try {
+    rows = await rowsResponse.json();
+  } catch (error) {
+    console.error("Admin role response was invalid:", error);
+    return { error: json({ error: "تعذّر التحقق من صلاحيات الحساب. حاول مجدداً." }, 503) };
+  }
+  if (!Array.isArray(rows)) {
+    return { error: json({ error: "تعذّر التحقق من صلاحيات الحساب. حاول مجدداً." }, 503) };
+  }
+
+  const row = rows[0] || null;
+  const role = row && row.is_admin === true && !row.deleted_at &&
+    (row.status == null || row.status === "active")
+    ? row.admin_role === "owner" ? "owner"
+      : row.admin_role === "support" ? "support"
+      : null
+    : null;
   if (!role) return { error: DENIED() };
 
   // التحقق بخطوتين: يُفرض فقط عندما يُفعَّل الإعداد dashboard_require_mfa (بعد أن يسجّل المدير جهازه)
@@ -99,7 +108,13 @@ export async function authorizeAdmin(request, env, { requireOwner = false } = {}
   if (!Array.isArray(mfaRows)) {
     return { error: json({ error: "تعذّر التحقق من إعدادات الأمان. حاول مجدداً." }, 503) };
   }
-  if (mfaRows[0]?.value === true && aal !== "aal2") {
+  // MFA is mandatory for dashboard access. Missing, false, or malformed configuration
+  // must never silently downgrade authentication to aal1.
+  if (mfaRows.length !== 1 || mfaRows[0]?.value !== true) {
+    console.error("Dashboard MFA is not enabled or its setting is missing.");
+    return { error: json({ error: "إعداد التحقق بخطوتين غير مفعّل. يلزم تدخل المالك." }, 503) };
+  }
+  if (aal !== "aal2") {
     return { error: json({ error: "يلزم التحقق بخطوتين.", code: "MFA_REQUIRED" }, 401) };
   }
 
