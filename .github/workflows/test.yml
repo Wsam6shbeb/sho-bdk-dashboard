@@ -21,4 +21,4 @@ jobs:
         with:
           node-version: 22
       - name: Run dashboard tests
-        run: node --experimental-default-type=module --test tests/
+        run: node --experimental-default-type=module --test tests/*.test.mjs
