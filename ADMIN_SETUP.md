@@ -52,7 +52,7 @@ where id = (
 من مجلد المستودع:
 
 ```bash
-node --test tests/admin.test.mjs tests/users.test.mjs
+node --test tests/
 ```
 
 يجب نجاح الاختبارات قبل دمج أي تغيير أمني.
