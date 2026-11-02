@@ -1224,7 +1224,10 @@ const AUDIT_LABELS = {
   admin_view_report_case: "عرض ملف بلاغ",
   admin_decide_verification: "قرار في طلب توثيق",
   admin_topup_wallet: "إضافة رصيد لمستخدم",
-  admin_view_verification_file: "عرض صورة توثيق"
+  admin_view_verification_file: "عرض صورة توثيق",
+  admin_reset_mfa_requested: "طلب إعادة ضبط مصادقة مدير",
+  admin_reset_mfa_completed: "إعادة ضبط مصادقة مدير",
+  admin_reset_mfa_partial: "إعادة ضبط مصادقة مدير جزئياً"
 };
 
 async function loadAudit() {
