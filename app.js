@@ -1,5 +1,6 @@
 const pages = {
   users: { title: "إدارة المستخدمين", id: "users-page" },
+  admins: { title: "إدارة المدراء", id: "admins-page" },
   settings: { title: "إعدادات التطبيق", id: "settings-page" },
   payments: { title: "إضافة رصيد", id: "payments-page" },
   commission: { title: "العمولة", id: "commission-page" },
@@ -303,7 +304,60 @@ saveHomeTipsButton.addEventListener("click", async () => {
   } finally { saveHomeTipsButton.disabled = adminState.role !== "owner"; }
 });
 
+let adminSessionMonitor = null;
+let adminSessionCheckInProgress = false;
+let adminSessionLogoutInProgress = false;
+
+function stopAdminSessionMonitor() {
+  if (adminSessionMonitor !== null) {
+    window.clearInterval(adminSessionMonitor);
+    adminSessionMonitor = null;
+  }
+  window.removeEventListener("focus", verifyAdminSession);
+  document.removeEventListener("visibilitychange", verifyAdminSession);
+}
+
+async function logoutRevokedAdmin() {
+  if (adminSessionLogoutInProgress) return;
+  adminSessionLogoutInProgress = true;
+  stopAdminSessionMonitor();
+  dashboardShell.classList.add("hidden");
+  loginScreen.classList.remove("hidden");
+  mfaBox.classList.add("hidden");
+  adminState.role = null;
+  await supabaseClient.auth.signOut();
+  setLoginMessage("تم إلغاء صلاحياتك الإدارية، وتم تسجيل خروجك.");
+}
+
+async function verifyAdminSession() {
+  if (adminSessionCheckInProgress || adminSessionLogoutInProgress ||
+      dashboardShell.classList.contains("hidden") || document.visibilityState !== "visible") return;
+  adminSessionCheckInProgress = true;
+  try {
+    const { data, error } = await supabaseClient.auth.getSession();
+    if (error || !data.session) {
+      await logoutRevokedAdmin();
+      return;
+    }
+    await callSettingsApi(data.session);
+  } catch (error) {
+    if (error.status === 403 || (error.status === 401 && error.code !== "MFA_REQUIRED")) {
+      await logoutRevokedAdmin();
+    }
+  } finally {
+    adminSessionCheckInProgress = false;
+  }
+}
+
+function startAdminSessionMonitor() {
+  stopAdminSessionMonitor();
+  adminSessionMonitor = window.setInterval(() => void verifyAdminSession(), 10000);
+  window.addEventListener("focus", verifyAdminSession);
+  document.addEventListener("visibilitychange", verifyAdminSession);
+}
+
 async function enterDashboard(session) {
+  adminSessionLogoutInProgress = false;
   // Keep the dashboard hidden until the server confirms this account is authorized.
   loginScreen.classList.remove("hidden");
   dashboardShell.classList.add("hidden");
@@ -337,6 +391,7 @@ async function enterDashboard(session) {
     commissionPercentInput.disabled = false;
     saveCommissionButton.disabled = false;
     applyAdminState(settings);
+    startAdminSessionMonitor();
     return true;
   } catch (error) {
     if (error.status === 401 && error.code === "MFA_REQUIRED") {
@@ -376,6 +431,7 @@ async function enterDashboard(session) {
       appSettingsStatus.textContent = "تعذّر تحميل إعدادات التطبيق من قاعدة البيانات. حدّث الصفحة وحاول مجدداً.";
       appSettingsStatus.classList.add("error");
       saveAppSettingsButton.disabled = true;
+      startAdminSessionMonitor();
       return true;
     }
 
@@ -1081,6 +1137,8 @@ function applyAdminState(settings) {
   adminState.requireMfa = Boolean(settings.dashboardRequireMfa);
   adminState.aal = settings.sessionAal || "aal1";
   const readOnly = adminState.role === "support";
+  const adminsNav = document.querySelector('[data-page="admins"]');
+  if (adminsNav) adminsNav.classList.toggle("hidden", adminState.role !== "owner");
   [saveCommissionButton, saveAppSettingsButton, saveSupportButton, savePaymentSettingsButton, document.getElementById("save-security")]
     .forEach((button) => {
       if (!button) return;
@@ -1221,7 +1279,14 @@ const AUDIT_LABELS = {
   admin_view_report_case: "عرض ملف بلاغ",
   admin_decide_verification: "قرار في طلب توثيق",
   admin_topup_wallet: "إضافة رصيد لمستخدم",
-  admin_view_verification_file: "عرض صورة توثيق"
+  admin_view_verification_file: "عرض صورة توثيق",
+  admin_reset_mfa_requested: "طلب إعادة ضبط مصادقة مدير",
+  admin_reset_mfa_completed: "إعادة ضبط مصادقة مدير",
+  admin_reset_mfa_partial: "إعادة ضبط مصادقة مدير جزئياً",
+  admin_promote_support_requested: "طلب إضافة مدير دعم",
+  admin_promote_support_completed: "إضافة مدير دعم",
+  admin_remove_support_requested: "طلب إزالة مدير دعم",
+  admin_remove_support_completed: "إزالة مدير دعم"
 };
 
 async function loadAudit() {
