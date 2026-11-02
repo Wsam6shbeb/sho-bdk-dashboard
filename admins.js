@@ -124,9 +124,10 @@
     statusLine.textContent = "جارٍ إعادة ضبط المصادقة…";
     try {
       const result = await api("POST", { userId: admin.id });
-      statusLine.textContent = result.message || "تمت إعادة ضبط المصادقة.";
-      statusLine.classList.add("success");
       await loadAdmins();
+      statusLine.textContent = result.message || "تمت إعادة ضبط المصادقة.";
+      statusLine.classList.remove("error");
+      statusLine.classList.add("success");
     } catch (error) {
       statusLine.textContent = error.message;
       statusLine.classList.add("error");
