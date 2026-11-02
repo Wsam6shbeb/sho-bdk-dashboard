@@ -98,7 +98,7 @@ async function resetSupportMfa(env, auth, request) {
   if (totpFactors.length === 0) return json({ error: "لا يوجد تطبيق مصادقة مسجّل لهذا الحساب." }, 409);
 
   // سجّل المحاولة قبل تنفيذ الحذف حتى لا تتم عملية حساسة بلا أثر تدقيقي.
-  const logged = await audit(env, auth.user.id, "admin_reset_mfa", "admin", userId, {
+  const logged = await audit(env, auth.user.id, "admin_reset_mfa_requested", "admin", userId, {
     target_role: "support",
     factor_count: totpFactors.length,
     factor_types: ["totp"]
@@ -113,6 +113,10 @@ async function resetSupportMfa(env, auth, request) {
     );
     if (!response.ok) {
       console.error("Support MFA factor deletion failed:", response.status, await response.text());
+      await audit(env, auth.user.id, "admin_reset_mfa_partial", "admin", userId, {
+        deleted_factor_count: deleted.length,
+        requested_factor_count: totpFactors.length
+      });
       return json({
         error: deleted.length
           ? "تم حذف بعض عوامل المصادقة فقط. لا تحاول تكرار العملية قبل مراجعة سجل التدقيق."
@@ -122,10 +126,16 @@ async function resetSupportMfa(env, auth, request) {
     deleted.push(factor.id);
   }
 
+  const completionLogged = await audit(env, auth.user.id, "admin_reset_mfa_completed", "admin", userId, {
+    deleted_factor_count: deleted.length
+  });
   return json({
     success: true,
     deletedFactors: deleted.length,
-    message: "تمت إعادة ضبط المصادقة الثنائية. سيحتاج المدير إلى تسجيل الدخول مجدداً وربط تطبيق مصادقة جديد."
+    auditWarning: !completionLogged,
+    message: completionLogged
+      ? "تمت إعادة ضبط المصادقة الثنائية. سيحتاج المدير إلى تسجيل الدخول مجدداً وربط تطبيق مصادقة جديد."
+      : "تمت إعادة ضبط المصادقة، لكن تعذّر تسجيل تأكيد العملية. راجع سجل الخادم قبل أي إجراء آخر."
   });
 }
 
