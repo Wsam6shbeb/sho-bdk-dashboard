@@ -19,12 +19,6 @@
       <h1>تسجيل الدخول</h1>
       <p class="login-description">الدخول مخصص لحساب المدير المعتمد فقط.</p>
       <button id="google-login-button" class="primary-button google-button" type="button">المتابعة باستخدام Google</button>
-      <p class="login-divider">أو الدخول بالبريد الإلكتروني</p>
-      <label for="login-email">البريد الإلكتروني</label>
-      <input id="login-email" type="email" autocomplete="username" required>
-      <label for="login-password">كلمة المرور</label>
-      <input id="login-password" type="password" autocomplete="current-password" required>
-      <button id="login-button" class="primary-button" type="submit">دخول آمن</button>
       <div id="mfa-box" class="mfa-box hidden">
         <h2 id="mfa-title">التحقق بخطوتين</h2>
         <p id="mfa-hint" class="login-description"></p>
@@ -137,7 +131,7 @@
 
       <section id="verifications-page" class="page hidden">
         <div class="section-heading">
-          <div><h2>طلبات التوثيق</h2><p>مراجعة الهوية والسيلفي واتخاذ القرار. للمالك فقط، وكل عرض لصورة يُسجّل في سجل التدقيق.</p></div>
+          <div><h2>طلبات التوثيق</h2><p>مراجعة الهوية والسيلفي واتخاذ القرار للمالك والدعم، وكل عرض لصورة يُسجّل في سجل التدقيق.</p></div>
           <button id="refresh-verifications" class="secondary-button" type="button">تحديث</button>
         </div>
         <div class="panel users-panel">
@@ -314,11 +308,10 @@
           <button id="security-enroll-button" class="secondary-button hidden" type="button">تفعيل التحقق بخطوتين لحسابي</button>
           <div class="setting-field">
             <label for="security-require-mfa">إلزام التحقق بخطوتين لكل دخول إلى اللوحة</label>
-            <select id="security-require-mfa">
-              <option value="false">غير إلزامي</option>
-              <option value="true">إلزامي</option>
+            <select id="security-require-mfa" disabled>
+              <option value="true">إلزامي دائماً</option>
             </select>
-            <small>لا يمكن تفعيل الإلزام إلا بعد أن تسجّل جهازك وتدخل بجلسة محقَّقة بخطوتين، حتى لا تُقفل خارج اللوحة.</small>
+            <small>التحقق بخطوتين شرط دائم لدخول لوحة التحكم، ولا يمكن تعطيله من الإعدادات.</small>
           </div>
           <p id="security-status" class="helper" role="status"></p>
           <button id="save-security" class="primary-button" type="button">حفظ إعداد الأمان</button>
@@ -364,8 +357,8 @@
 
   <script src="./config.js"></script>
   <script src="./vendor/supabase.js"></script>
-  <script src="./app.js?v=10"></script>
+  <script src="./app.js?v=11"></script>
   <script src="./delete-account-warning.js?v=1"></script>
-  <script src="./verifications.js?v=1"></script>
+  <script src="./verifications.js?v=2"></script>
 </body>
 </html>

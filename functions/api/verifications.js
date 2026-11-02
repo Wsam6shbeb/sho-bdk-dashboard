@@ -1,6 +1,6 @@
 import { authorizeAdmin, json } from "../_lib/admin.js";
 
-// مراجعة طلبات التوثيق (للمالك فقط). الصور تُقرأ من bucket خاص بمفتاح الخادم،
+// مراجعة طلبات التوثيق للمالك والدعم. الصور تُقرأ من bucket خاص بمفتاح الخادم،
 // وتُمرَّر للمتصفح من نفس الأصل بدون روابط عامة، وكل فتح لصورة يُسجَّل في audit_log.
 
 const BUCKET = "verification-docs";
@@ -148,6 +148,7 @@ async function decide(env, auth, request) {
     if (text.includes("ALREADY_DECIDED")) return json({ error: "تم اتخاذ قرار بهذا الطلب مسبقاً." }, 409);
     if (text.includes("VERIFICATION_NOT_FOUND")) return json({ error: "الطلب غير موجود." }, 404);
     if (text.includes("REASON_REQUIRED")) return json({ error: "اكتب سبب الرفض." }, 400);
+    if (text.includes("FORBIDDEN")) return json({ error: "لم تعد تملك صلاحية مراجعة التوثيق." }, 403);
     console.error("decide_verification failed:", response.status, text);
     return json({ error: "تعذّر حفظ القرار." }, 502);
   }
@@ -163,8 +164,8 @@ export async function onRequest({ request, env }) {
     return json({ error: "طريقة الطلب غير مدعومة." }, 405);
   }
   try {
-    // كل العمليات للمالك فقط: الصور حساسة.
-    const auth = await authorizeAdmin(request, env, { requireOwner: true });
+    // يسمح للمالك والدعم بمراجعة التوثيق؛ كل فتح لصورة يُسجّل في سجل التدقيق.
+    const auth = await authorizeAdmin(request, env);
     if (auth.error) return auth.error;
 
     if (request.method === "POST") return await decide(env, auth, request);

@@ -14,7 +14,7 @@ const env = {
 
 function token(claims = {}) {
   const enc = (o) => Buffer.from(JSON.stringify(o)).toString("base64url");
-  return enc({ alg: "HS256" }) + "." + enc(claims) + ".sig";
+  return enc({ alg: "HS256" }) + "." + enc({ ...claims, aal: claims.aal ?? "aal2" }) + ".sig";
 }
 
 function headers(h) {
@@ -33,7 +33,7 @@ function installFetch({ targetRow, targetEmail = "someone@example.com", authAdmi
     });
     if (u.endsWith("/auth/v1/user")) return res({ id: ADMIN_ID, email: "owner@example.com", email_confirmed_at: "2026-01-01" });
     if (u.includes("/rest/v1/users?select=is_admin,admin_role")) return res([{ is_admin: true, admin_role: "owner", status: "active" }]);
-    if (u.includes("/rest/v1/app_settings")) return res([{ value: false }]);
+    if (u.includes("/rest/v1/app_settings")) return res([{ value: true }]);
     if (u.includes("/auth/v1/admin/users/" + TARGET_ID) && method === "GET") {
       return authAdminOk ? res({ id: TARGET_ID, email: targetEmail }) : res({}, 500);
     }

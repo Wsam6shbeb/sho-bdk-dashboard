@@ -8,8 +8,6 @@ const pages = {
 };
 
 const loginScreen = document.getElementById("login-screen");
-const loginForm = document.getElementById("login-form");
-const loginButton = document.getElementById("login-button");
 const googleLoginButton = document.getElementById("google-login-button");
 const loginMessage = document.getElementById("login-message");
 const dashboardShell = document.getElementById("dashboard-shell");
@@ -445,7 +443,7 @@ async function searchTopupCode() {
     else {
       const warning = document.createElement("p");
       warning.className = "helper error";
-      warning.textContent = "إضافة الرصيد متاحة للمالك فقط وللحسابات المؤهلة.";
+      warning.textContent = "إضافة الرصيد متاحة للمالك والدعم وللحسابات المؤهلة.";
       resultPanel.appendChild(warning);
     }
   } catch (error) {
@@ -683,7 +681,7 @@ const userDetailsModal = document.getElementById("user-details-modal");
 const userDetailsContent = document.getElementById("user-details-content");
 
 function createWalletTopupCard(user) {
-  // The lookup API is owner-only; a successful lookup already proves the session is authorized.
+  // The lookup API authorizes both owner and support; a successful lookup confirms access.
   // Do not block rendering based on the client-side role state, which may not be initialized yet.
   if (!isUserActive(user) || user.is_admin) return null;
 
@@ -951,36 +949,10 @@ googleLoginButton.addEventListener("click", async () => {
   }
 });
 
-loginForm.addEventListener("submit", async (event) => {
-  event.preventDefault();
-  if (!supabaseClient) {
-    setLoginMessage("تعذّر تحميل مكتبة تسجيل الدخول. حدّث الصفحة وحاول مجدداً.");
-    return;
-  }
-
-  loginButton.disabled = true;
-  loginButton.textContent = "جارٍ التحقق…";
-  setLoginMessage("");
-
-  const email = document.getElementById("login-email").value.trim();
-  const password = document.getElementById("login-password").value;
-  const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
-
-  if (error || !data.session) {
-    setLoginMessage("تعذّر تسجيل الدخول. تأكد من البريد الإلكتروني وكلمة المرور.");
-  } else {
-    await enterDashboard(data.session);
-  }
-
-  loginButton.disabled = false;
-  loginButton.textContent = "دخول آمن";
-});
-
 document.getElementById("logout-button").addEventListener("click", async () => {
   if (supabaseClient) await supabaseClient.auth.signOut();
   dashboardShell.classList.add("hidden");
   loginScreen.classList.remove("hidden");
-  loginForm.reset();
   setLoginMessage("تم تسجيل الخروج.", false);
 });
 
@@ -1113,7 +1085,7 @@ function applyAdminState(settings) {
     .forEach((button) => {
       if (!button) return;
       if (readOnly) button.disabled = true;
-      button.title = readOnly ? "دور الدعم للقراءة فقط" : "";
+      button.title = readOnly ? "صلاحيات الدعم لا تشمل إعدادات النظام" : "";
     });
 }
 
@@ -1206,7 +1178,7 @@ async function loadSecurity() {
   const state = document.getElementById("security-mfa-state");
   const enrollButton = document.getElementById("security-enroll-button");
   const requireSelect = document.getElementById("security-require-mfa");
-  document.getElementById("security-role").textContent = adminState.role === "support" ? "دعم (قراءة فقط)" : "مالك";
+  document.getElementById("security-role").textContent = adminState.role === "support" ? "دعم (التوثيق والرصيد)" : "مالك";
   requireSelect.value = String(adminState.requireMfa);
   const { data } = await supabaseClient.auth.mfa.listFactors();
   const verified = (data?.totp || []).some((item) => item.status === "verified");

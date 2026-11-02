@@ -11,11 +11,11 @@ const env = {
 
 function token(claims) {
   const enc = (o) => Buffer.from(JSON.stringify(o)).toString("base64url");
-  return enc({ alg: "HS256" }) + "." + enc(claims) + ".sig";
+  return enc({ alg: "HS256" }) + "." + enc({ ...claims, aal: claims.aal ?? "aal2" }) + ".sig";
 }
 
 // Mock for the three upstream calls the authorizer makes.
-function mockFetch({ user, dbRow, mfaRequired = false, userOk = true, mfaOk = true }) {
+function mockFetch({ user, dbRow, mfaRequired = true, userOk = true, usersOk = true, mfaOk = true, mfaRows = null }) {
   const calls = [];
   globalThis.fetch = async (url) => {
     calls.push(String(url));
@@ -24,10 +24,10 @@ function mockFetch({ user, dbRow, mfaRequired = false, userOk = true, mfaOk = tr
       return { ok: userOk, status: userOk ? 200 : 401, json: async () => user, text: async () => "" };
     }
     if (u.includes("/rest/v1/users")) {
-      return { ok: true, status: 200, json: async () => (dbRow ? [dbRow] : []), text: async () => "" };
+      return { ok: usersOk, status: usersOk ? 200 : 503, json: async () => (dbRow ? [dbRow] : []), text: async () => "role lookup failed" };
     }
     if (u.includes("/rest/v1/app_settings")) {
-      return { ok: mfaOk, status: mfaOk ? 200 : 503, json: async () => [{ value: mfaRequired }], text: async () => "settings unavailable" };
+      return { ok: mfaOk, status: mfaOk ? 200 : 503, json: async () => (mfaRows ?? [{ value: mfaRequired }]), text: async () => "settings unavailable" };
     }
     throw new Error("unexpected fetch " + u);
   };
@@ -61,8 +61,8 @@ test("normal user -> 403", async () => {
   assert.equal(r.error.status, 403);
 });
 
-test("is_admin owner passes; NULL role = owner", async () => {
-  mockFetch({ user: goodUser, dbRow: { is_admin: true, admin_role: null, status: "active" } });
+test("explicit owner role passes", async () => {
+  mockFetch({ user: goodUser, dbRow: { is_admin: true, admin_role: "owner", status: "active" } });
   const r = await authorizeAdmin(req(token({})), env, { requireOwner: true });
   assert.equal(r.role, "owner");
 });
@@ -82,26 +82,25 @@ test("suspended or deleted admin is rejected", async () => {
   assert.equal((await authorizeAdmin(req(token({})), env)).error.status, 403);
 });
 
-test("legacy ADMIN_EMAIL fallback works only when configured and matches", async () => {
+test("ADMIN_EMAIL never grants access without an active database admin row", async () => {
   mockFetch({ user: goodUser, dbRow: null });
-  assert.equal((await authorizeAdmin(req(token({})), env)).error.status, 403);
   const withLegacy = { ...env, ADMIN_EMAIL: " A@B.co " };
-  const r = await authorizeAdmin(req(token({})), withLegacy);
-  assert.equal(r.role, "owner");
+  assert.equal((await authorizeAdmin(req(token({ aal: "aal2" })), withLegacy)).error.status, 403);
 });
 
-test("primary owner access survives suspended, deleted, or missing app user row", async () => {
-  const withOwner = { ...env, ADMIN_EMAIL: " A@B.co " };
-  mockFetch({ user: goodUser, dbRow: { is_admin: true, status: "suspended" } });
-  assert.equal((await authorizeAdmin(req(token({})), withOwner, { requireOwner: true })).role, "owner");
-  mockFetch({ user: goodUser, dbRow: { is_admin: false, status: "active", deleted_at: "2026-01-01" } });
-  assert.equal((await authorizeAdmin(req(token({})), withOwner, { requireOwner: true })).role, "owner");
-  mockFetch({ user: goodUser, dbRow: null });
-  assert.equal((await authorizeAdmin(req(token({})), withOwner, { requireOwner: true })).role, "owner");
+test("database role lookup failure is denied safely", async () => {
+  mockFetch({ user: goodUser, dbRow: { is_admin: true, admin_role: "owner", status: "active" }, usersOk: false });
+  const r = await authorizeAdmin(req(token({ aal: "aal2" })), env);
+  assert.equal(r.error.status, 503);
+});
+
+test("unknown or NULL admin role is denied", async () => {
+  mockFetch({ user: goodUser, dbRow: { is_admin: true, admin_role: null, status: "active" } });
+  assert.equal((await authorizeAdmin(req(token({ aal: "aal2" })), env)).error.status, 403);
 });
 
 test("MFA required: aal1 is refused with a code, aal2 passes", async () => {
-  mockFetch({ user: goodUser, dbRow: { is_admin: true, status: "active" }, mfaRequired: true });
+  mockFetch({ user: goodUser, dbRow: { is_admin: true, admin_role: "owner", status: "active" }, mfaRequired: true });
   const low = await authorizeAdmin(req(token({ aal: "aal1" })), env);
   assert.equal(low.error.status, 401);
   assert.equal((await low.error.json()).code, "MFA_REQUIRED");
@@ -110,16 +109,22 @@ test("MFA required: aal1 is refused with a code, aal2 passes", async () => {
 });
 
 test("MFA setting lookup failure is denied safely", async () => {
-  mockFetch({ user: goodUser, dbRow: { is_admin: true, status: "active" }, mfaOk: false });
+  mockFetch({ user: goodUser, dbRow: { is_admin: true, admin_role: "owner", status: "active" }, mfaOk: false });
   const r = await authorizeAdmin(req(token({ aal: "aal1" })), env);
   assert.equal(r.error.status, 503);
   assert.equal((await r.error.json()).error.includes("إعدادات الأمان"), true);
 });
 
-test("MFA not required: aal1 passes", async () => {
-  mockFetch({ user: goodUser, dbRow: { is_admin: true, status: "active" }, mfaRequired: false });
-  const r = await authorizeAdmin(req(token({ aal: "aal1" })), env);
-  assert.equal(r.role, "owner");
+test("MFA disabled is rejected even for an active database owner", async () => {
+  mockFetch({ user: goodUser, dbRow: { is_admin: true, admin_role: "owner", status: "active" }, mfaRequired: false });
+  const r = await authorizeAdmin(req(token({ aal: "aal2" })), env);
+  assert.equal(r.error.status, 503);
+});
+
+test("missing MFA setting is rejected safely", async () => {
+  mockFetch({ user: goodUser, dbRow: { is_admin: true, admin_role: "owner", status: "active" }, mfaRows: [] });
+  const r = await authorizeAdmin(req(token({ aal: "aal2" })), env);
+  assert.equal(r.error.status, 503);
 });
 
 test("changes() reports only differences", () => {
