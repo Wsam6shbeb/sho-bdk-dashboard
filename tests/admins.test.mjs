@@ -34,8 +34,10 @@ function setupFetch({ targetRole = "support", factorRows = [{ id: FACTOR_ID, fac
     if (u.includes("/rest/v1/users?select=id,full_name")) {
       return response([{ id: OWNER_ID, full_name: "Owner", is_admin: true, admin_role: "owner", status: "active" }, { id: SUPPORT_ID, full_name: "Support", is_admin: true, admin_role: "support", status: "active" }]);
     }
+    if (u.endsWith("/auth/v1/admin/users/" + OWNER_ID + "/factors")) return response([]);
+    if (u.endsWith("/auth/v1/admin/users/" + OWNER_ID)) return response({ id: OWNER_ID, email: "owner@example.com" });
     if (u.endsWith("/auth/v1/admin/users/" + SUPPORT_ID)) return response({ id: SUPPORT_ID, email: "support@example.com" });
-    if (u.endsWith("/auth/v1/admin/users/" + SUPPORT_ID + "/factors")) return response({ factors: factorRows });
+    if (u.endsWith("/auth/v1/admin/users/" + SUPPORT_ID + "/factors")) return response(factorRows);
     if (u.endsWith("/auth/v1/admin/users/" + SUPPORT_ID + "/factors/" + FACTOR_ID) && method === "DELETE") return response({}, deleteStatus);
     if (u.includes("/rest/v1/audit_log")) return response({}, auditOk ? 201 : 500);
     throw new Error("unexpected fetch: " + method + " " + u);
@@ -52,6 +54,18 @@ function call(method, body) {
     env
   });
 }
+
+test("GET lists owner and support admins with MFA status", async () => {
+  setupFetch();
+  const result = await call("GET");
+  assert.equal(result.status, 200);
+  const body = await result.json();
+  assert.equal(body.admins.length, 2);
+  assert.equal(body.admins[0].role, "owner");
+  assert.equal(body.admins[0].email, "owner@example.com");
+  assert.equal(body.admins[1].role, "support");
+  assert.equal(body.admins[1].mfaEnabled, true);
+});
 
 test("MFA reset is owner-only and cannot be called by support", async () => {
   setupFetch();
