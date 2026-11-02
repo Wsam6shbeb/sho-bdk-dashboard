@@ -43,6 +43,7 @@
       <div class="side-label">القائمة الرئيسية</div>
       <button class="nav-item active" data-page="overview"><span>▦</span> نظرة عامة</button>
       <button class="nav-item" data-page="users"><span>♙</span> إدارة المستخدمين</button>
+      <button class="nav-item hidden" data-page="admins"><span>♟</span> إدارة المدراء</button>
       <button class="nav-item" data-page="verifications"><span>✓</span> طلبات التوثيق</button>
       <button class="nav-item" data-page="settings"><span>⚙</span> إعدادات التطبيق</button>
       <button class="nav-item" data-page="payments"><span>▣</span> إضافة رصيد</button>
@@ -128,6 +129,26 @@
           </div>
         </div>
       </div>
+
+      <section id="admins-page" class="page hidden">
+        <div class="section-heading">
+          <div><h2>إدارة المدراء</h2><p>عرض حسابات المالك والدعم وحالة المصادقة الثنائية. إعادة الضبط متاحة للمالك لحساب الدعم فقط.</p></div>
+          <button id="refresh-admins" class="secondary-button" type="button">تحديث القائمة</button>
+        </div>
+        <div class="panel users-panel">
+          <p id="admins-status" class="helper" role="status">اضغط تحديث لعرض حسابات الإدارة.</p>
+          <div class="users-table-wrap">
+            <table class="users-table admins-table">
+              <thead><tr><th>المدير</th><th>البريد الإلكتروني</th><th>الصلاحية</th><th>الحالة</th><th>المصادقة الثنائية</th><th>الإجراء</th></tr></thead>
+              <tbody id="admins-table-body"><tr><td colspan="6" class="empty-users">لم يتم تحميل القائمة بعد.</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="panel note-panel admins-note">
+          <strong>تنبيه أمني</strong>
+          <p>إعادة الضبط تحذف عامل المصادقة المسجّل لحساب الدعم وتنهي جلساته النشطة. عند تسجيل الدخول التالي، يجب عليه ربط تطبيق مصادقة جديد. لا يمكن إعادة ضبط عامل المالك من هذه الصفحة.</p>
+        </div>
+      </section>
 
       <section id="verifications-page" class="page hidden">
         <div class="section-heading">
@@ -360,5 +381,6 @@
   <script src="./app.js?v=11"></script>
   <script src="./delete-account-warning.js?v=1"></script>
   <script src="./verifications.js?v=2"></script>
+  <script src="./admins.js?v=1"></script>
 </body>
 </html>
