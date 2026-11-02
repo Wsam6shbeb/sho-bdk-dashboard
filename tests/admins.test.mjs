@@ -1,0 +1,103 @@
+// تشغيل: node --test tests/admins.test.mjs
+import test from "node:test";
+import assert from "node:assert/strict";
+import { onRequest } from "../functions/api/admins.js";
+
+const OWNER_ID = "11111111-1111-4111-8111-111111111111";
+const SUPPORT_ID = "22222222-2222-4222-8222-222222222222";
+const FACTOR_ID = "33333333-3333-4333-8333-333333333333";
+const env = {
+  SUPABASE_URL: "https://example.supabase.co",
+  SUPABASE_ANON_KEY: "anon",
+  SUPABASE_SERVICE_ROLE_KEY: "service"
+};
+
+function token(aal = "aal2") {
+  const enc = (o) => Buffer.from(JSON.stringify(o)).toString("base64url");
+  return enc({ alg: "HS256" }) + "." + enc({ sub: OWNER_ID, aal }) + ".sig";
+}
+function response(body, status = 200) {
+  return { ok: status < 400, status, json: async () => body, text: async () => JSON.stringify(body) };
+}
+function setupFetch({ targetRole = "support", factorRows = [{ id: FACTOR_ID, factor_type: "totp", status: "verified" }], deleteStatus = 200, auditOk = true } = {}) {
+  const calls = [];
+  globalThis.fetch = async (url, init = {}) => {
+    const u = String(url);
+    const method = init.method || "GET";
+    calls.push({ url: u, method, body: init.body });
+    if (u.endsWith("/auth/v1/user")) return response({ id: OWNER_ID, email: "owner@example.com", email_confirmed_at: "2026-01-01" });
+    if (u.includes("/rest/v1/users?select=is_admin,admin_role")) return response([{ is_admin: true, admin_role: "owner", status: "active" }]);
+    if (u.includes("/rest/v1/app_settings")) return response([{ value: true }]);
+    if (u.includes("/rest/v1/users?select=id,is_admin,admin_role,status,deleted_at")) {
+      return response([{ id: SUPPORT_ID, is_admin: true, admin_role: targetRole, status: "active", deleted_at: null }]);
+    }
+    if (u.includes("/rest/v1/users?select=id,full_name")) {
+      return response([{ id: OWNER_ID, full_name: "Owner", is_admin: true, admin_role: "owner", status: "active" }, { id: SUPPORT_ID, full_name: "Support", is_admin: true, admin_role: "support", status: "active" }]);
+    }
+    if (u.endsWith("/auth/v1/admin/users/" + SUPPORT_ID)) return response({ id: SUPPORT_ID, email: "support@example.com" });
+    if (u.endsWith("/auth/v1/admin/users/" + SUPPORT_ID + "/factors")) return response({ factors: factorRows });
+    if (u.endsWith("/auth/v1/admin/users/" + SUPPORT_ID + "/factors/" + FACTOR_ID) && method === "DELETE") return response({}, deleteStatus);
+    if (u.includes("/rest/v1/audit_log")) return response({}, auditOk ? 201 : 500);
+    throw new Error("unexpected fetch: " + method + " " + u);
+  };
+  return calls;
+}
+function call(method, body) {
+  return onRequest({
+    request: new Request("https://dash.example/api/admins", {
+      method,
+      headers: { Authorization: "Bearer " + token(), "Content-Type": "application/json" },
+      body: body === undefined ? undefined : JSON.stringify(body)
+    }),
+    env
+  });
+}
+
+test("MFA reset is owner-only and cannot be called by support", async () => {
+  setupFetch();
+  // Authorizer reads the owner role from the mock; a support caller is tested by changing that row.
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (url, init = {}) => {
+    if (String(url).includes("/rest/v1/users?select=is_admin,admin_role")) {
+      return response([{ is_admin: true, admin_role: "support", status: "active" }]);
+    }
+    return originalFetch(url, init);
+  };
+  const result = await call("POST", { userId: SUPPORT_ID });
+  assert.equal(result.status, 403);
+});
+
+test("resets only a support user's TOTP factor and records the action", async () => {
+  const calls = setupFetch();
+  const result = await call("POST", { userId: SUPPORT_ID });
+  assert.equal(result.status, 200);
+  assert.equal((await result.json()).deletedFactors, 1);
+  assert.ok(calls.some((item) => item.method === "DELETE" && item.url.endsWith("/factors/" + FACTOR_ID)));
+  const audit = calls.find((item) => item.url.includes("/rest/v1/audit_log"));
+  assert.equal(JSON.parse(audit.body).action, "admin_reset_mfa");
+});
+
+test("does not reset an owner account", async () => {
+  setupFetch({ targetRole: "owner" });
+  const result = await call("POST", { userId: SUPPORT_ID });
+  assert.equal(result.status, 403);
+});
+
+test("does not reset an account without a TOTP factor", async () => {
+  setupFetch({ factorRows: [] });
+  const result = await call("POST", { userId: SUPPORT_ID });
+  assert.equal(result.status, 409);
+});
+
+test("does not delete a factor if audit logging fails", async () => {
+  const calls = setupFetch({ auditOk: false });
+  const result = await call("POST", { userId: SUPPORT_ID });
+  assert.equal(result.status, 502);
+  assert.equal(calls.some((item) => item.method === "DELETE"), false);
+});
+
+test("rejects malformed user IDs", async () => {
+  setupFetch();
+  const result = await call("POST", { userId: "not-a-uuid" });
+  assert.equal(result.status, 400);
+});
