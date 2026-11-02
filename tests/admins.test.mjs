@@ -88,7 +88,9 @@ test("resets only a support user's TOTP factor and records the action", async ()
   assert.equal((await result.json()).deletedFactors, 1);
   assert.ok(calls.some((item) => item.method === "DELETE" && item.url.endsWith("/factors/" + FACTOR_ID)));
   const audit = calls.find((item) => item.url.includes("/rest/v1/audit_log"));
-  assert.equal(JSON.parse(audit.body).action, "admin_reset_mfa");
+  assert.equal(JSON.parse(audit.body).action, "admin_reset_mfa_requested");
+  assert.ok(calls.some((item) => item.url.includes("/rest/v1/audit_log") &&
+    JSON.parse(item.body).action === "admin_reset_mfa_completed"));
 });
 
 test("does not reset an owner account", async () => {
