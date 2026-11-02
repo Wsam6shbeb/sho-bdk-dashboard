@@ -188,10 +188,11 @@
     searchStatus.textContent = "جارٍ إضافة مدير الدعم…";
     try {
       const result = await api("POST", { action: "promote_support", userId: user.id });
-      searchStatus.textContent = result.message || "تمت إضافة مدير الدعم.";
-      searchStatus.classList.add("success");
       await searchUsers();
       await loadAdmins();
+      searchStatus.textContent = result.message || "تمت إضافة مدير الدعم.";
+      searchStatus.classList.remove("error");
+      searchStatus.classList.add("success");
     } catch (error) {
       searchStatus.textContent = error.message;
       searchStatus.classList.add("error");
