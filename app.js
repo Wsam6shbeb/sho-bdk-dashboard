@@ -1,5 +1,6 @@
 const pages = {
   users: { title: "إدارة المستخدمين", id: "users-page" },
+  admins: { title: "إدارة المدراء", id: "admins-page" },
   settings: { title: "إعدادات التطبيق", id: "settings-page" },
   payments: { title: "إضافة رصيد", id: "payments-page" },
   commission: { title: "العمولة", id: "commission-page" },
@@ -1081,6 +1082,8 @@ function applyAdminState(settings) {
   adminState.requireMfa = Boolean(settings.dashboardRequireMfa);
   adminState.aal = settings.sessionAal || "aal1";
   const readOnly = adminState.role === "support";
+  const adminsNav = document.querySelector('[data-page="admins"]');
+  if (adminsNav) adminsNav.classList.toggle("hidden", adminState.role !== "owner");
   [saveCommissionButton, saveAppSettingsButton, saveSupportButton, savePaymentSettingsButton, document.getElementById("save-security")]
     .forEach((button) => {
       if (!button) return;
