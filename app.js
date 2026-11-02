@@ -357,6 +357,7 @@ function startAdminSessionMonitor() {
 }
 
 async function enterDashboard(session) {
+  adminSessionLogoutInProgress = false;
   // Keep the dashboard hidden until the server confirms this account is authorized.
   loginScreen.classList.remove("hidden");
   dashboardShell.classList.add("hidden");
