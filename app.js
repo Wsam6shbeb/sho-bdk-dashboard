@@ -304,6 +304,58 @@ saveHomeTipsButton.addEventListener("click", async () => {
   } finally { saveHomeTipsButton.disabled = adminState.role !== "owner"; }
 });
 
+let adminSessionMonitor = null;
+let adminSessionCheckInProgress = false;
+let adminSessionLogoutInProgress = false;
+
+function stopAdminSessionMonitor() {
+  if (adminSessionMonitor !== null) {
+    window.clearInterval(adminSessionMonitor);
+    adminSessionMonitor = null;
+  }
+  window.removeEventListener("focus", verifyAdminSession);
+  document.removeEventListener("visibilitychange", verifyAdminSession);
+}
+
+async function logoutRevokedAdmin() {
+  if (adminSessionLogoutInProgress) return;
+  adminSessionLogoutInProgress = true;
+  stopAdminSessionMonitor();
+  dashboardShell.classList.add("hidden");
+  loginScreen.classList.remove("hidden");
+  mfaBox.classList.add("hidden");
+  adminState.role = null;
+  await supabaseClient.auth.signOut();
+  setLoginMessage("تم إلغاء صلاحياتك الإدارية، وتم تسجيل خروجك.");
+}
+
+async function verifyAdminSession() {
+  if (adminSessionCheckInProgress || adminSessionLogoutInProgress ||
+      dashboardShell.classList.contains("hidden") || document.visibilityState !== "visible") return;
+  adminSessionCheckInProgress = true;
+  try {
+    const { data, error } = await supabaseClient.auth.getSession();
+    if (error || !data.session) {
+      await logoutRevokedAdmin();
+      return;
+    }
+    await callSettingsApi(data.session);
+  } catch (error) {
+    if (error.status === 403 || (error.status === 401 && error.code !== "MFA_REQUIRED")) {
+      await logoutRevokedAdmin();
+    }
+  } finally {
+    adminSessionCheckInProgress = false;
+  }
+}
+
+function startAdminSessionMonitor() {
+  stopAdminSessionMonitor();
+  adminSessionMonitor = window.setInterval(() => void verifyAdminSession(), 10000);
+  window.addEventListener("focus", verifyAdminSession);
+  document.addEventListener("visibilitychange", verifyAdminSession);
+}
+
 async function enterDashboard(session) {
   // Keep the dashboard hidden until the server confirms this account is authorized.
   loginScreen.classList.remove("hidden");
@@ -338,6 +390,7 @@ async function enterDashboard(session) {
     commissionPercentInput.disabled = false;
     saveCommissionButton.disabled = false;
     applyAdminState(settings);
+    startAdminSessionMonitor();
     return true;
   } catch (error) {
     if (error.status === 401 && error.code === "MFA_REQUIRED") {
@@ -377,6 +430,7 @@ async function enterDashboard(session) {
       appSettingsStatus.textContent = "تعذّر تحميل إعدادات التطبيق من قاعدة البيانات. حدّث الصفحة وحاول مجدداً.";
       appSettingsStatus.classList.add("error");
       saveAppSettingsButton.disabled = true;
+      startAdminSessionMonitor();
       return true;
     }
 
