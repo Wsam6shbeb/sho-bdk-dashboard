@@ -89,7 +89,7 @@ async function searchEligibleUsers(env, request) {
     env.SUPABASE_URL +
       "/rest/v1/users?select=id,full_name,status,is_admin,admin_role,deleted_at" +
       "&full_name=ilike.*" + filter + "*" +
-      "&is_admin=eq.false&status=eq.active&deleted_at=is.null" +
+      "&is_admin=eq.false&admin_role=is.null&status=eq.active&deleted_at=is.null" +
       "&order=created_at.desc&limit=10",
     { headers: authHeaders(env) }
   );
@@ -103,13 +103,14 @@ async function searchEligibleUsers(env, request) {
   const users = await Promise.all(rows.filter((row) => UUID_RE.test(row.id)).map(async (row) => {
     const authResult = await getAuthUser(env, row.id);
     if (!authResult.ok) throw new Error("ELIGIBLE_USER_AUTH_LOOKUP_FAILED");
+    if (!authResult.user.email || !authResult.user.email_confirmed_at) return null;
     return {
       id: row.id,
       name: row.full_name || "",
-      email: typeof authResult.user.email === "string" ? authResult.user.email : ""
+      email: authResult.user.email
     };
   }));
-  return json({ users });
+  return json({ users: users.filter(Boolean) });
 }
 
 async function resetSupportMfa(env, auth, userId) {
@@ -188,6 +189,12 @@ async function changeSupportAccess(env, auth, userId, action) {
   }
   if (target.admin_role === "owner" || (target.is_admin === true && target.admin_role !== "support")) {
     return json({ error: "حساب المالك محمي ولا يمكن تغيير صلاحياته من هذه الصفحة." }, 403);
+  }
+
+  const authResult = await getAuthUser(env, userId);
+  if (!authResult.ok) return json({ error: "تعذّر التحقق من حساب تسجيل الدخول." }, 502);
+  if (!authResult.user.email || !authResult.user.email_confirmed_at) {
+    return json({ error: "لا يمكن إضافة حساب لا يملك بريداً إلكترونياً مؤكداً." }, 409);
   }
 
   let next;
