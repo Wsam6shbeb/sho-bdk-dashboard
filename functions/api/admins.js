@@ -214,8 +214,11 @@ async function changeSupportAccess(env, auth, userId, action) {
   });
   if (!logged) return json({ error: "تعذّر تسجيل العملية في سجل التدقيق؛ لم يتم تغيير الصلاحيات." }, 502);
 
+  const updateFilter = action === "promote_support"
+    ? "&is_admin=eq.false&status=eq.active&deleted_at=is.null"
+    : "&is_admin=eq.true&admin_role=eq.support&status=eq.active&deleted_at=is.null";
   const updateResponse = await fetch(
-    env.SUPABASE_URL + "/rest/v1/users?id=eq." + userId + "&is_admin=eq." + String(target.is_admin === true),
+    env.SUPABASE_URL + "/rest/v1/users?id=eq." + userId + updateFilter,
     {
       method: "PATCH",
       headers: authHeaders(env, { Prefer: "return=representation" }),
