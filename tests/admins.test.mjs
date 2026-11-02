@@ -162,13 +162,13 @@ test("MFA reset is owner-only and cannot be called by support", async () => {
     }
     return originalFetch(url, init);
   };
-  const result = await call("POST", { userId: SUPPORT_ID });
+  const result = await call("POST", { action: "reset_mfa", userId: SUPPORT_ID });
   assert.equal(result.status, 403);
 });
 
 test("resets only a support user's TOTP factor and records the action", async () => {
   const calls = setupFetch();
-  const result = await call("POST", { userId: SUPPORT_ID });
+  const result = await call("POST", { action: "reset_mfa", userId: SUPPORT_ID });
   assert.equal(result.status, 200);
   assert.equal((await result.json()).deletedFactors, 1);
   assert.ok(calls.some((item) => item.method === "DELETE" && item.url.endsWith("/factors/" + FACTOR_ID)));
@@ -180,19 +180,19 @@ test("resets only a support user's TOTP factor and records the action", async ()
 
 test("does not reset an owner account", async () => {
   setupFetch({ targetRole: "owner" });
-  const result = await call("POST", { userId: SUPPORT_ID });
+  const result = await call("POST", { action: "reset_mfa", userId: SUPPORT_ID });
   assert.equal(result.status, 403);
 });
 
 test("does not reset an account without a TOTP factor", async () => {
   setupFetch({ factorRows: [] });
-  const result = await call("POST", { userId: SUPPORT_ID });
+  const result = await call("POST", { action: "reset_mfa", userId: SUPPORT_ID });
   assert.equal(result.status, 409);
 });
 
 test("does not delete a factor if audit logging fails", async () => {
   const calls = setupFetch({ auditOk: false });
-  const result = await call("POST", { userId: SUPPORT_ID });
+  const result = await call("POST", { action: "reset_mfa", userId: SUPPORT_ID });
   assert.equal(result.status, 502);
   assert.equal(calls.some((item) => item.method === "DELETE"), false);
 });
