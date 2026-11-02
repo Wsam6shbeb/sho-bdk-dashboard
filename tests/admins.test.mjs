@@ -19,7 +19,7 @@ function token(aal = "aal2") {
 function response(body, status = 200) {
   return { ok: status < 400, status, json: async () => body, text: async () => JSON.stringify(body) };
 }
-function setupFetch({ targetRole = "support", targetIsAdmin = true, targetStatus = "active", targetDeletedAt = null, factorRows = [{ id: FACTOR_ID, factor_type: "totp", status: "verified" }], deleteStatus = 200, auditOk = true } = {}) {
+function setupFetch({ targetRole = "support", targetIsAdmin = true, targetStatus = "active", targetDeletedAt = null, authEmailConfirmed = true, factorRows = [{ id: FACTOR_ID, factor_type: "totp", status: "verified" }], deleteStatus = 200, auditOk = true } = {}) {
   const calls = [];
   globalThis.fetch = async (url, init = {}) => {
     const u = String(url);
@@ -38,8 +38,8 @@ function setupFetch({ targetRole = "support", targetIsAdmin = true, targetStatus
       return response([{ id: OWNER_ID, full_name: "Owner", is_admin: true, admin_role: "owner", status: "active" }, { id: SUPPORT_ID, full_name: "Support", is_admin: true, admin_role: "support", status: "active" }]);
     }
     if (u.endsWith("/auth/v1/admin/users/" + OWNER_ID + "/factors")) return response([]);
-    if (u.endsWith("/auth/v1/admin/users/" + OWNER_ID)) return response({ id: OWNER_ID, email: "owner@example.com" });
-    if (u.endsWith("/auth/v1/admin/users/" + SUPPORT_ID)) return response({ id: SUPPORT_ID, email: "support@example.com" });
+    if (u.endsWith("/auth/v1/admin/users/" + OWNER_ID)) return response({ id: OWNER_ID, email: "owner@example.com", email_confirmed_at: "2026-01-01" });
+    if (u.endsWith("/auth/v1/admin/users/" + SUPPORT_ID)) return response({ id: SUPPORT_ID, email: "support@example.com", email_confirmed_at: authEmailConfirmed ? "2026-01-01" : null });
     if (u.endsWith("/auth/v1/admin/users/" + SUPPORT_ID + "/factors")) return response(factorRows);
     if (u.endsWith("/auth/v1/admin/users/" + SUPPORT_ID + "/factors/" + FACTOR_ID) && method === "DELETE") return response({}, deleteStatus);
     if (u.includes("/rest/v1/users?id=eq." + SUPPORT_ID) && method === "PATCH") {
@@ -123,6 +123,21 @@ test("removes support role without deleting the account", async () => {
     JSON.parse(item.body).admin_role === null));
   assert.ok(calls.some((item) => item.url.includes("/rest/v1/audit_log") &&
     JSON.parse(item.body).action === "admin_remove_support_completed"));
+});
+
+
+test("does not promote a user whose email is not confirmed", async () => {
+  const calls = setupFetch({ targetIsAdmin: false, targetRole: null, authEmailConfirmed: false });
+  const result = await onRequest({
+    request: new Request("https://dash.example/api/admins", {
+      method: "POST",
+      headers: { Authorization: "Bearer " + token(), "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "promote_support", userId: SUPPORT_ID })
+    }),
+    env
+  });
+  assert.equal(result.status, 409);
+  assert.equal(calls.some((item) => item.method === "PATCH"), false);
 });
 
 test("does not promote a user if audit logging fails", async () => {
