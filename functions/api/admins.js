@@ -191,16 +191,15 @@ async function changeSupportAccess(env, auth, userId, action) {
     return json({ error: "حساب المالك محمي ولا يمكن تغيير صلاحياته من هذه الصفحة." }, 403);
   }
 
-  const authResult = await getAuthUser(env, userId);
-  if (!authResult.ok) return json({ error: "تعذّر التحقق من حساب تسجيل الدخول." }, 502);
-  if (!authResult.user.email || !authResult.user.email_confirmed_at) {
-    return json({ error: "لا يمكن إضافة حساب لا يملك بريداً إلكترونياً مؤكداً." }, 409);
-  }
-
   let next;
   let auditAction;
   if (action === "promote_support") {
     if (target.is_admin === true) return json({ error: "هذا الحساب مدير بالفعل." }, 409);
+    const authResult = await getAuthUser(env, userId);
+    if (!authResult.ok) return json({ error: "تعذّر التحقق من حساب تسجيل الدخول." }, 502);
+    if (!authResult.user.email || !authResult.user.email_confirmed_at) {
+      return json({ error: "لا يمكن إضافة حساب لا يملك بريداً إلكترونياً مؤكداً." }, 409);
+    }
     next = { is_admin: true, admin_role: "support" };
     auditAction = "admin_promote_support";
   } else if (action === "remove_support") {
