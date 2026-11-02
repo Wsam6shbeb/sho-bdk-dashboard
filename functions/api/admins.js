@@ -36,7 +36,8 @@ async function listAdmins(env, actorId) {
     }
     const authUser = await userResponse.json();
     const factorPayload = await factorsResponse.json();
-    const factors = Array.isArray(factorPayload.factors) ? factorPayload.factors : [];
+    const factors = Array.isArray(factorPayload) ? factorPayload
+      : Array.isArray(factorPayload.factors) ? factorPayload.factors : [];
     const totpFactors = factors.filter((factor) => factor.factor_type === "totp");
     return {
       id: admin.id,
@@ -91,7 +92,8 @@ async function resetSupportMfa(env, auth, request) {
     return json({ error: "تعذّر قراءة عوامل المصادقة. لم يتم إجراء أي تغيير." }, 502);
   }
   const factorPayload = await factorsResponse.json();
-  const factors = Array.isArray(factorPayload.factors) ? factorPayload.factors : [];
+  const factors = Array.isArray(factorPayload) ? factorPayload
+    : Array.isArray(factorPayload.factors) ? factorPayload.factors : [];
   const totpFactors = factors.filter((factor) => factor.factor_type === "totp" && UUID_RE.test(factor.id));
   if (totpFactors.length === 0) return json({ error: "لا يوجد تطبيق مصادقة مسجّل لهذا الحساب." }, 409);
 
