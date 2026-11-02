@@ -1227,7 +1227,11 @@ const AUDIT_LABELS = {
   admin_view_verification_file: "عرض صورة توثيق",
   admin_reset_mfa_requested: "طلب إعادة ضبط مصادقة مدير",
   admin_reset_mfa_completed: "إعادة ضبط مصادقة مدير",
-  admin_reset_mfa_partial: "إعادة ضبط مصادقة مدير جزئياً"
+  admin_reset_mfa_partial: "إعادة ضبط مصادقة مدير جزئياً",
+  admin_promote_support_requested: "طلب إضافة مدير دعم",
+  admin_promote_support_completed: "إضافة مدير دعم",
+  admin_remove_support_requested: "طلب إزالة مدير دعم",
+  admin_remove_support_completed: "إزالة مدير دعم"
 };
 
 async function loadAudit() {
