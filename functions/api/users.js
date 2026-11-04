@@ -28,7 +28,7 @@ async function getAuthEmail(env, userId) {
 // البحث بالبريد الدقيق عبر صفحات Supabase Auth؛ لا نعيد أي بيانات Auth أخرى للمتصفح.
 async function findAuthUserByEmail(env, email) {
   const wanted = String(email || "").trim().toLowerCase();
-  if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(wanted) || wanted.length > 254) {
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(wanted) || wanted.length > 254) {
     return { ok: true, user: null };
   }
 
@@ -126,7 +126,7 @@ export async function onRequest({ request, env }) {
       if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(userId)) {
         return json({ error: "معرّف المستخدم غير صالح." }, 400);
       }
-      if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(suppliedEmail) || suppliedEmail.length > 254) {
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(suppliedEmail) || suppliedEmail.length > 254) {
         return json({ error: "يلزم إدخال البريد الإلكتروني المسجّل للحساب." }, 400);
       }
 
