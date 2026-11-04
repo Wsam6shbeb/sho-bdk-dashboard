@@ -13,16 +13,27 @@ async function supabaseRequest(env, path, init = {}) {
 }
 
 // الإيميل غير موجود في جدول public.users؛ نجلبه من Auth (للتحقق من المالك الأساسي).
-async function getAuthEmail(env, userId) {
+async function getAuthIdentity(env, userId) {
   const response = await fetch(env.SUPABASE_URL + "/auth/v1/admin/users/" + userId, {
-    headers: {
-      apikey: env.SUPABASE_SERVICE_ROLE_KEY,
-      Authorization: "Bearer " + env.SUPABASE_SERVICE_ROLE_KEY
-    }
+    headers: { apikey: env.SUPABASE_SERVICE_ROLE_KEY, Authorization: "Bearer " + env.SUPABASE_SERVICE_ROLE_KEY }
   });
-  if (!response.ok) return { ok: false, email: null };
+  if (!response.ok) return { ok: false, email: null, phone: null };
   const user = await response.json();
-  return { ok: true, email: typeof user.email === "string" ? user.email : null };
+  return { ok: true, email: typeof user.email === "string" ? user.email : null, phone: typeof user.phone === "string" ? user.phone : null };
+}
+function normalizePhone(value) {
+  let digits = String(value || "").replace(/\D/g, "");
+  if (digits.startsWith("00963")) digits = digits.slice(5);
+  else if (digits.startsWith("963")) digits = digits.slice(3);
+  else if (digits.startsWith("0")) digits = digits.slice(1);
+  return digits;
+}
+function exactPhoneFilter(query) {
+  const digits = String(query || "").replace(/\D/g, "");
+  const normalized = normalizePhone(digits);
+  if (normalized.length < 7 || normalized.length > 15) return null;
+  const variants = new Set([digits, normalized, "0" + normalized, "963" + normalized, "00963" + normalized, "+963" + normalized]);
+  return "&or=(" + [...variants].map((value) => "phone.eq." + encodeURIComponent(value)).join(",") + ")";
 }
 
 // البحث بالبريد الدقيق عبر صفحات Supabase Auth؛ لا نعيد أي بيانات Auth أخرى للمتصفح.
@@ -123,22 +134,21 @@ export async function onRequest({ request, env }) {
 
       const userId = typeof body.userId === "string" ? body.userId.trim() : "";
       const suppliedEmail = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
+      const suppliedPhone = typeof body.phone === "string" ? body.phone.trim() : "";
       if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(userId)) {
         return json({ error: "معرّف المستخدم غير صالح." }, 400);
       }
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(suppliedEmail) || suppliedEmail.length > 254) {
-        return json({ error: "يلزم إدخال البريد الإلكتروني المسجّل للحساب." }, 400);
-      }
-
-      const authUser = await getAuthEmail(env, userId);
-      if (!authUser.ok) return json({ error: "تعذّر التحقق من البريد الإلكتروني للحساب." }, 502);
-      if (!authUser.email || authUser.email.trim().toLowerCase() !== suppliedEmail) {
-        return json({ error: "البريد الإلكتروني لا يطابق الحساب المحدد؛ لم يتم حذف أي شيء." }, 409);
-      }
+      const isEmailConfirmation = Boolean(suppliedEmail);
+      if (isEmailConfirmation && (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(suppliedEmail) || suppliedEmail.length > 254)) return json({ error: "البريد الإلكتروني غير صالح." }, 400);
+      if (!isEmailConfirmation && normalizePhone(suppliedPhone).length < 7) return json({ error: "يلزم إدخال رقم الهاتف المسجّل للحساب." }, 400);
+      const authUser = await getAuthIdentity(env, userId);
+      if (!authUser.ok) return json({ error: "تعذّر التحقق من بيانات الحساب." }, 502);
+      if (isEmailConfirmation && (!authUser.email || authUser.email.trim().toLowerCase() !== suppliedEmail)) return json({ error: "البريد الإلكتروني لا يطابق الحساب المحدد؛ لم يتم حذف أي شيء." }, 409);
+      if (!isEmailConfirmation && authUser.phone && normalizePhone(authUser.phone) !== normalizePhone(suppliedPhone)) return json({ error: "رقم الهاتف لا يطابق الحساب المحدد؛ لم يتم حذف أي شيء." }, 409);
 
       const targetResponse = await supabaseRequest(
         env,
-        "/rest/v1/users?select=id,status,is_admin,deleted_at&id=eq." + userId
+        "/rest/v1/users?select=id,status,is_admin,deleted_at,phone&id=eq." + userId
       );
       if (!targetResponse.ok) {
         console.error("User deletion lookup failed:", targetResponse.status, await targetResponse.text());
@@ -147,6 +157,10 @@ export async function onRequest({ request, env }) {
       const targets = await targetResponse.json();
       const target = Array.isArray(targets) ? targets[0] : null;
       if (!target) return json({ error: "المستخدم غير موجود." }, 404);
+      if (!isEmailConfirmation) {
+        const authoritativePhone = authUser.phone || target.phone;
+        if (!authoritativePhone || normalizePhone(authoritativePhone) !== normalizePhone(suppliedPhone)) return json({ error: "رقم الهاتف لا يطابق الحساب المحدد؛ لم يتم حذف أي شيء." }, 409);
+      }
 
       const isPrimaryOwner = Boolean(
         env.ADMIN_EMAIL && authUser.email &&
@@ -232,7 +246,7 @@ export async function onRequest({ request, env }) {
       if (!target) return json({ error: "المستخدم غير موجود." }, 404);
       let isPrimaryOwner = false;
       if (env.ADMIN_EMAIL) {
-        const authUser = await getAuthEmail(env, userId);
+        const authUser = await getAuthIdentity(env, userId);
         if (!authUser.ok) return json({ error: "تعذّر التحقق من هوية الحساب المطلوب." }, 502);
         isPrimaryOwner = Boolean(
           authUser.email && authUser.email.toLowerCase() === env.ADMIN_EMAIL.trim().toLowerCase()
@@ -306,6 +320,8 @@ export async function onRequest({ request, env }) {
     const filterParam = url.searchParams.get("filter") || "all";
     const rawQuery = (url.searchParams.get("q") || "").trim();
     const isEmailSearch = rawQuery.includes("@");
+    const phoneFilter = !isEmailSearch ? exactPhoneFilter(rawQuery) : null;
+    const isExactPhoneSearch = Boolean(phoneFilter);
     let matchedEmail = null;
     let filter;
 
@@ -320,6 +336,8 @@ export async function onRequest({ request, env }) {
       } else {
         filter = buildUserFilter("", filterParam) + "&id=eq.00000000-0000-4000-8000-000000000000";
       }
+    } else if (isExactPhoneSearch) {
+      filter = buildUserFilter("", filterParam) + phoneFilter;
     } else {
       filter = buildUserFilter(rawQuery, filterParam);
     }
@@ -361,6 +379,7 @@ export async function onRequest({ request, env }) {
     const result = users.map((user) => ({
       ...user,
       ...(isEmailSearch && matchedEmail ? { email: matchedEmail } : {}),
+      ...(isExactPhoneSearch && user.phone ? { matchedPhone: user.phone } : {}),
       provider: profileByUserId.get(user.id) || null
     }));
 
