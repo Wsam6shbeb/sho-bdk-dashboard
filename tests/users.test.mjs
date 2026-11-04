@@ -53,7 +53,10 @@ function installFetch({ targetRow, targetEmail = "someone@example.com", authAdmi
       return res({}, 200, { "content-range": "*/" + n });
     }
     if (u.includes("/rest/v1/users?select=id,full_name")) {
-      return res([{ id: TARGET_ID, full_name: "Test", rating_count: 0, rating_avg: 5 }], 200, { "content-range": "25-49/57" });
+      const emailMatch = u.includes("id=eq." + TARGET_ID);
+      return res([{ id: TARGET_ID, full_name: "Test", rating_count: 0, rating_avg: 5 }], 200, {
+        "content-range": emailMatch ? "0-0/1" : "25-49/57"
+      });
     }
     throw new Error("unexpected fetch: " + method + " " + u);
   };
@@ -75,10 +78,10 @@ test("GET finds an exact email in Supabase Auth and returns only its matching pu
   const response = await call("GET", "/api/users?q=someone%40example.com");
   assert.equal(response.status, 200);
   const body = await response.json();
-  assert.equal(body.total, 57);
+  assert.equal(body.total, 1);
   assert.equal(body.users[0].email, "Someone@Example.com");
   const listCall = log.find((entry) => entry.url.includes("/rest/v1/users?select=id,full_name"));
-  assert.match(listCall.url, /id=eq\\.22222222-2222-4222-8222-222222222222/);
+  assert.ok(listCall.url.includes("id=eq." + TARGET_ID));
 });
 
 test("DELETE refuses a mismatched email before calling the deletion RPC", async () => {
@@ -185,7 +188,7 @@ test("DELETE refuses an already deleted account without calling the RPC", async 
   const log = installFetch({
     targetRow: { id: TARGET_ID, status: "deleted", is_admin: false, deleted_at: "2026-10-01T00:00:00Z" }
   });
-  const response = await call("DELETE", "/api/users", { userId: TARGET_ID });
+  const response = await call("DELETE", "/api/users", { userId: TARGET_ID, email: "someone@example.com" });
   assert.equal(response.status, 409);
   assert.equal(log.some((c) => c.url.includes("/rest/v1/rpc/admin_delete_user")), false);
 });
