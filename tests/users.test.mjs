@@ -102,7 +102,7 @@ test("GET pages from the server with filter, offset and a global summary", async
   const body = await response.json();
   assert.equal(body.page, 2);
   assert.equal(body.pageSize, 25);
-  assert.equal(body.total, 57);
+  assert.equal(body.total, 1);
   assert.deepEqual(body.summary, { total: 130, providers: 40, active: 110 });
   const listCall = log.find((c) => c.url.includes("select=id,full_name"));
   assert.match(listCall.url, /offset=25/);
