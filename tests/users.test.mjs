@@ -34,6 +34,9 @@ function installFetch({ targetRow, targetEmail = "someone@example.com", authAdmi
     if (u.endsWith("/auth/v1/user")) return res({ id: ADMIN_ID, email: "owner@example.com", email_confirmed_at: "2026-01-01" });
     if (u.includes("/rest/v1/users?select=is_admin,admin_role")) return res([{ is_admin: true, admin_role: "owner", status: "active" }]);
     if (u.includes("/rest/v1/app_settings")) return res([{ value: true }]);
+    if (u.includes("/auth/v1/admin/users?page=") && method === "GET") {
+      return res({ users: [{ id: TARGET_ID, email: targetEmail }] });
+    }
     if (u.includes("/auth/v1/admin/users/" + TARGET_ID) && method === "GET") {
       return authAdminOk ? res({ id: TARGET_ID, email: targetEmail }) : res({}, 500);
     }
@@ -66,6 +69,28 @@ const call = (method, path, body) =>
     }),
     env
   });
+
+test("GET finds an exact email in Supabase Auth and returns only its matching public user", async () => {
+  const log = installFetch({ targetEmail: "Someone@Example.com" });
+  const response = await call("GET", "/api/users?q=someone%40example.com");
+  assert.equal(response.status, 200);
+  const body = await response.json();
+  assert.equal(body.total, 57);
+  assert.equal(body.users[0].email, "Someone@Example.com");
+  const listCall = log.find((entry) => entry.url.includes("/rest/v1/users?select=id,full_name"));
+  assert.match(listCall.url, /id=eq\\.22222222-2222-4222-8222-222222222222/);
+});
+
+test("DELETE refuses a mismatched email before calling the deletion RPC", async () => {
+  const log = installFetch({
+    targetRow: { id: TARGET_ID, status: "active", is_admin: false, deleted_at: null },
+    targetEmail: "someone@example.com"
+  });
+  const response = await call("DELETE", "/api/users", { userId: TARGET_ID, email: "wrong@example.com" });
+  assert.equal(response.status, 409);
+  assert.match((await response.json()).error, /لا يطابق/);
+  assert.equal(log.some((entry) => entry.url.includes("/rest/v1/rpc/admin_delete_user")), false);
+});
 
 test("GET pages from the server with filter, offset and a global summary", async () => {
   const log = installFetch();
@@ -124,7 +149,7 @@ test("PATCH suspends a normal user and writes an audit entry", async () => {
 
 test("DELETE anonymizes a normal user through the protected RPC and writes an audit entry", async () => {
   const log = installFetch({ targetRow: { id: TARGET_ID, status: "active", is_admin: false, deleted_at: null } });
-  const response = await call("DELETE", "/api/users", { userId: TARGET_ID });
+  const response = await call("DELETE", "/api/users", { userId: TARGET_ID, email: "someone@example.com" });
   assert.equal(response.status, 200);
   const body = await response.json();
   assert.equal(body.status, "deleted");
@@ -142,7 +167,7 @@ test("DELETE refuses the primary owner even if its public row is not marked admi
     targetRow: { id: TARGET_ID, status: "active", is_admin: false, deleted_at: null },
     targetEmail: "Owner@Example.com"
   });
-  const response = await call("DELETE", "/api/users", { userId: TARGET_ID });
+  const response = await call("DELETE", "/api/users", { userId: TARGET_ID, email: "Owner@Example.com" });
   assert.equal(response.status, 403);
 });
 
@@ -151,7 +176,7 @@ test("DELETE refuses accounts with active work", async () => {
     targetRow: { id: TARGET_ID, status: "active", is_admin: false, deleted_at: null },
     deleteRpcError: "ACTIVE_WORK_IN_PROGRESS"
   });
-  const response = await call("DELETE", "/api/users", { userId: TARGET_ID });
+  const response = await call("DELETE", "/api/users", { userId: TARGET_ID, email: "someone@example.com" });
   assert.equal(response.status, 409);
   assert.match((await response.json()).error, /قيد التنفيذ/);
 });
