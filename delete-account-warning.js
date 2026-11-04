@@ -21,7 +21,7 @@ function ensureDeleteWarningModal() {
       <p class="delete-warning-intro">انتبه: هذا الإجراء لا يحذف البيانات نهائياً، لكنه يعطّل الحساب ويخفي بياناته الشخصية.</p>
       <p id="delete-warning-description" class="delete-warning-description"></p>
       <p id="delete-warning-account-email" class="delete-warning-final"></p>
-      <label class="delete-warning-email-label" for="delete-warning-email">أعد كتابة البريد الإلكتروني نفسه للتأكيد</label>
+      <label id="delete-warning-email-label" class="delete-warning-email-label" for="delete-warning-email">أعد كتابة البريد الإلكتروني أو رقم الهاتف نفسه للتأكيد</label>
       <input id="delete-warning-email" type="email" autocomplete="off" maxlength="254" required placeholder="البريد الإلكتروني المسجّل">
       <p class="delete-warning-final">لن يتم الحذف إذا لم يكن البريد مطابقاً تماماً للحساب المحدد.</p>
       <div class="delete-warning-actions">
@@ -48,9 +48,11 @@ function ensureDeleteWarningModal() {
 
 async function deleteUserAccount(user, button) {
   const status = document.getElementById("users-status");
-  if (!user.email) {
+  const identifierType = user.email ? "email" : user.matchedPhone ? "phone" : null;
+  const expectedIdentifier = identifierType === "email" ? user.email : user.matchedPhone;
+  if (!identifierType || !expectedIdentifier) {
     status.classList.add("error");
-    status.textContent = "للتأكد من الحساب قبل حذفه، ابحث أولاً عن بريده الإلكتروني المسجّل ثم اختر نتيجة البحث المطابقة.";
+    status.textContent = "للحذف الآمن، ابحث عن الحساب بالبريد الإلكتروني الكامل أو رقم الهاتف الكامل المسجّل، ثم اختر النتيجة المطابقة.";
     return;
   }
 
@@ -62,16 +64,24 @@ async function deleteUserAccount(user, button) {
   const cancelButton = modal.querySelector("#delete-warning-cancel");
 
   description.textContent = DELETE_ACCOUNT_EXPLANATION;
-  accountEmail.textContent = "البريد المسجّل لهذا الحساب: " + user.email;
+  const isPhone = identifierType === "phone";
+  accountEmail.textContent = (isPhone ? "رقم الهاتف المسجّل لهذا الحساب: " : "البريد المسجّل لهذا الحساب: ") + expectedIdentifier;
+  modal.querySelector("#delete-warning-email-label").textContent = isPhone ? "أعد كتابة رقم الهاتف نفسه للتأكيد" : "أعد كتابة البريد الإلكتروني نفسه للتأكيد";
+  emailInput.type = isPhone ? "tel" : "email";
+  emailInput.inputMode = isPhone ? "tel" : "email";
+  emailInput.placeholder = isPhone ? "رقم الهاتف المسجّل" : "البريد الإلكتروني المسجّل";
   emailInput.value = "";
   modal.classList.remove("hidden");
   modal.setAttribute("aria-hidden", "false");
 
   confirmButton.onclick = async () => {
-    const typedEmail = emailInput.value.trim().toLowerCase();
-    if (typedEmail !== user.email.trim().toLowerCase()) {
+    const typedIdentifier = isPhone ? emailInput.value.trim() : emailInput.value.trim().toLowerCase();
+    const matches = isPhone
+      ? normalizePhoneForConfirmation(typedIdentifier) === normalizePhoneForConfirmation(expectedIdentifier)
+      : typedIdentifier === expectedIdentifier.trim().toLowerCase();
+    if (!matches) {
       status.classList.add("error");
-      status.textContent = "البريد الذي كتبته لا يطابق البريد الظاهر للحساب. لم يتم حذف أي شيء.";
+      status.textContent = (isPhone ? "رقم الهاتف" : "البريد الإلكتروني") + " الذي كتبته لا يطابق بيانات الحساب. لم يتم حذف أي شيء.";
       emailInput.focus();
       return;
     }
@@ -88,7 +98,7 @@ async function deleteUserAccount(user, button) {
           Authorization: "Bearer " + data.session.access_token,
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({ userId: user.id, email: typedEmail }),
+        body: JSON.stringify({ userId: user.id, [identifierType]: typedIdentifier }),
         cache: "no-store"
       });
       const result = await response.json().catch(() => ({}));
@@ -111,17 +121,20 @@ async function deleteUserAccount(user, button) {
 }
 
 
-// Show the Auth email directly under the name only for an exact email-search result.
+function normalizePhoneForConfirmation(value) { let digits = String(value || "").replace(/\D/g, ""); if (digits.startsWith("00963")) digits = digits.slice(5); else if (digits.startsWith("963")) digits = digits.slice(3); else if (digits.startsWith("0")) digits = digits.slice(1); return digits; }
+
+// Show an exact email or phone search result identifier.
 const originalRenderUsersForEmail = renderUsers;
 renderUsers = function () {
   originalRenderUsersForEmail();
   cachedUsers.forEach((user, index) => {
-    if (!user.email) return;
+    const identifier = user.email || user.matchedPhone;
+    if (!identifier) return;
     const nameCell = usersTableBody.children[index]?.children[0];
     if (!nameCell || nameCell.querySelector(".user-email-search-result")) return;
     const email = document.createElement("small");
     email.className = "user-email-search-result";
-    email.textContent = user.email;
+    email.textContent = (user.email ? "البريد: " : "الهاتف: ") + identifier;
     email.style.display = "block";
     email.style.direction = "ltr";
     email.style.textAlign = "left";
@@ -131,7 +144,7 @@ renderUsers = function () {
   });
 };
 const usersSearchInput = document.getElementById("users-search");
-if (usersSearchInput) usersSearchInput.placeholder = "ابحث بالاسم أو الهاتف أو المنطقة أو البريد الإلكتروني";
+if (usersSearchInput) usersSearchInput.placeholder = "ابحث بالاسم أو المنطقة، أو بالبريد/رقم الهاتف الكامل للحذف";
 
 // Keep the information tooltip clear and consistent whenever the users table rerenders.
 function refreshDeleteAccountInfoText() {
