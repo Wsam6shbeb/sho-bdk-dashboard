@@ -20,7 +20,10 @@ function ensureDeleteWarningModal() {
       </div>
       <p class="delete-warning-intro">انتبه: هذا الإجراء لا يحذف البيانات نهائياً، لكنه يعطّل الحساب ويخفي بياناته الشخصية.</p>
       <p id="delete-warning-description" class="delete-warning-description"></p>
-      <p class="delete-warning-final">لا تتابع إلا إذا راجعت الحساب وتأكدت أنك تريد تعطيله وإخفاء بياناته الشخصية.</p>
+      <p id="delete-warning-account-email" class="delete-warning-final"></p>
+      <label class="delete-warning-email-label" for="delete-warning-email">أعد كتابة البريد الإلكتروني نفسه للتأكيد</label>
+      <input id="delete-warning-email" type="email" autocomplete="off" maxlength="254" required placeholder="البريد الإلكتروني المسجّل">
+      <p class="delete-warning-final">لن يتم الحذف إذا لم يكن البريد مطابقاً تماماً للحساب المحدد.</p>
       <div class="delete-warning-actions">
         <button id="delete-warning-cancel" class="secondary-button" type="button">إلغاء</button>
         <button id="delete-warning-confirm" class="delete-warning-confirm" type="button">نعم، أتابع حذف الحساب</button>
@@ -44,19 +47,35 @@ function ensureDeleteWarningModal() {
 }
 
 async function deleteUserAccount(user, button) {
+  const status = document.getElementById("users-status");
+  if (!user.email) {
+    status.classList.add("error");
+    status.textContent = "للتأكد من الحساب قبل حذفه، ابحث أولاً عن بريده الإلكتروني المسجّل ثم اختر نتيجة البحث المطابقة.";
+    return;
+  }
+
   const modal = ensureDeleteWarningModal();
   const description = modal.querySelector("#delete-warning-description");
+  const accountEmail = modal.querySelector("#delete-warning-account-email");
+  const emailInput = modal.querySelector("#delete-warning-email");
   const confirmButton = modal.querySelector("#delete-warning-confirm");
   const cancelButton = modal.querySelector("#delete-warning-cancel");
 
   description.textContent = DELETE_ACCOUNT_EXPLANATION;
+  accountEmail.textContent = "البريد المسجّل لهذا الحساب: " + user.email;
+  emailInput.value = "";
   modal.classList.remove("hidden");
   modal.setAttribute("aria-hidden", "false");
 
-  // Clicking the table's delete button only opens this warning; deletion happens
-  // only after the administrator explicitly confirms inside the warning dialog.
   confirmButton.onclick = async () => {
-    modal._closeWarning();
+    const typedEmail = emailInput.value.trim().toLowerCase();
+    if (typedEmail !== user.email.trim().toLowerCase()) {
+      status.classList.add("error");
+      status.textContent = "البريد الذي كتبته لا يطابق البريد الظاهر للحساب. لم يتم حذف أي شيء.";
+      emailInput.focus();
+      return;
+    }
+
     confirmButton.disabled = true;
     button.disabled = true;
     try {
@@ -69,18 +88,19 @@ async function deleteUserAccount(user, button) {
           Authorization: "Bearer " + data.session.access_token,
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({ userId: user.id }),
+        body: JSON.stringify({ userId: user.id, email: typedEmail }),
         cache: "no-store"
       });
       const result = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(result.error || "تعذّر تنفيذ إجراء الحساب.");
 
+      modal._closeWarning();
       await loadUsers(true);
-      usersStatus.classList.remove("error");
-      usersStatus.textContent = result.message || "تم تنفيذ إجراء الحساب.";
+      status.classList.remove("error");
+      status.textContent = result.message || "تم تنفيذ إجراء الحساب.";
     } catch (error) {
-      usersStatus.textContent = error.message || "تعذّر تنفيذ إجراء الحساب.";
-      usersStatus.classList.add("error");
+      status.textContent = error.message || "تعذّر تنفيذ إجراء الحساب.";
+      status.classList.add("error");
       button.disabled = false;
     } finally {
       confirmButton.disabled = false;
@@ -90,6 +110,28 @@ async function deleteUserAccount(user, button) {
   cancelButton.focus();
 }
 
+
+// Show the Auth email directly under the name only for an exact email-search result.
+const originalRenderUsersForEmail = renderUsers;
+renderUsers = function () {
+  originalRenderUsersForEmail();
+  cachedUsers.forEach((user, index) => {
+    if (!user.email) return;
+    const nameCell = usersTableBody.children[index]?.children[0];
+    if (!nameCell || nameCell.querySelector(".user-email-search-result")) return;
+    const email = document.createElement("small");
+    email.className = "user-email-search-result";
+    email.textContent = user.email;
+    email.style.display = "block";
+    email.style.direction = "ltr";
+    email.style.textAlign = "left";
+    email.style.fontSize = "12px";
+    email.style.opacity = "0.8";
+    nameCell.appendChild(email);
+  });
+};
+const usersSearchInput = document.getElementById("users-search");
+if (usersSearchInput) usersSearchInput.placeholder = "ابحث بالاسم أو الهاتف أو المنطقة أو البريد الإلكتروني";
 
 // Keep the information tooltip clear and consistent whenever the users table rerenders.
 function refreshDeleteAccountInfoText() {
