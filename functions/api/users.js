@@ -25,6 +25,40 @@ async function getAuthEmail(env, userId) {
   return { ok: true, email: typeof user.email === "string" ? user.email : null };
 }
 
+// البحث بالبريد الدقيق عبر صفحات Supabase Auth؛ لا نعيد أي بيانات Auth أخرى للمتصفح.
+async function findAuthUserByEmail(env, email) {
+  const wanted = String(email || "").trim().toLowerCase();
+  if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(wanted) || wanted.length > 254) {
+    return { ok: true, user: null };
+  }
+
+  for (let page = 1; page <= 100; page += 1) {
+    const response = await fetch(
+      env.SUPABASE_URL + "/auth/v1/admin/users?page=" + page + "&per_page=100",
+      {
+        headers: {
+          apikey: env.SUPABASE_SERVICE_ROLE_KEY,
+          Authorization: "Bearer " + env.SUPABASE_SERVICE_ROLE_KEY
+        }
+      }
+    );
+    if (!response.ok) return { ok: false, user: null };
+
+    const payload = await response.json();
+    const users = Array.isArray(payload) ? payload : payload?.users;
+    if (!Array.isArray(users)) return { ok: false, user: null };
+
+    const match = users.find((user) =>
+      typeof user.email === "string" && user.email.trim().toLowerCase() === wanted
+    );
+    if (match) return { ok: true, user: match };
+    if (users.length < 100) return { ok: true, user: null };
+  }
+
+  // لا نعرض نتيجة ناقصة إذا تجاوز عدد الحسابات الحد الآمن للبحث.
+  return { ok: false, user: null };
+}
+
 // عدد الصفوف من ترويسة Content-Range (مثل "0-24/133" أو "*/0")
 function totalFromRange(response) {
   const range = response.headers.get("content-range") || "";
@@ -88,8 +122,18 @@ export async function onRequest({ request, env }) {
       }
 
       const userId = typeof body.userId === "string" ? body.userId.trim() : "";
+      const suppliedEmail = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
       if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(userId)) {
         return json({ error: "معرّف المستخدم غير صالح." }, 400);
+      }
+      if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(suppliedEmail) || suppliedEmail.length > 254) {
+        return json({ error: "يلزم إدخال البريد الإلكتروني المسجّل للحساب." }, 400);
+      }
+
+      const authUser = await getAuthEmail(env, userId);
+      if (!authUser.ok) return json({ error: "تعذّر التحقق من البريد الإلكتروني للحساب." }, 502);
+      if (!authUser.email || authUser.email.trim().toLowerCase() !== suppliedEmail) {
+        return json({ error: "البريد الإلكتروني لا يطابق الحساب المحدد؛ لم يتم حذف أي شيء." }, 409);
       }
 
       const targetResponse = await supabaseRequest(
@@ -104,14 +148,10 @@ export async function onRequest({ request, env }) {
       const target = Array.isArray(targets) ? targets[0] : null;
       if (!target) return json({ error: "المستخدم غير موجود." }, 404);
 
-      let isPrimaryOwner = false;
-      if (env.ADMIN_EMAIL) {
-        const authUser = await getAuthEmail(env, userId);
-        if (!authUser.ok) return json({ error: "تعذّر التحقق من هوية الحساب المطلوب." }, 502);
-        isPrimaryOwner = Boolean(
-          authUser.email && authUser.email.toLowerCase() === env.ADMIN_EMAIL.trim().toLowerCase()
-        );
-      }
+      const isPrimaryOwner = Boolean(
+        env.ADMIN_EMAIL && authUser.email &&
+        authUser.email.trim().toLowerCase() === env.ADMIN_EMAIL.trim().toLowerCase()
+      );
 
       if (isPrimaryOwner || target.is_admin || userId === auth.user.id) {
         return json({ error: "لا يمكن حذف حساب المالك الأساسي أو أي حساب مدير." }, 403);
@@ -264,7 +304,25 @@ export async function onRequest({ request, env }) {
     const page = Math.max(1, Math.floor(Number(url.searchParams.get("page")) || 1));
     const pageSize = Math.min(100, Math.max(10, Math.floor(Number(url.searchParams.get("pageSize")) || 25)));
     const filterParam = url.searchParams.get("filter") || "all";
-    const filter = buildUserFilter(url.searchParams.get("q"), filterParam);
+    const rawQuery = (url.searchParams.get("q") || "").trim();
+    const isEmailSearch = rawQuery.includes("@");
+    let matchedEmail = null;
+    let filter;
+
+    if (isEmailSearch) {
+      const emailLookup = await findAuthUserByEmail(env, rawQuery);
+      if (!emailLookup.ok) {
+        return json({ error: "تعذّر البحث في البريد الإلكتروني حالياً. لم يتم عرض نتائج غير مؤكدة." }, 502);
+      }
+      if (emailLookup.user?.id) {
+        matchedEmail = emailLookup.user.email;
+        filter = buildUserFilter("", filterParam) + "&id=eq." + encodeURIComponent(emailLookup.user.id);
+      } else {
+        filter = buildUserFilter("", filterParam) + "&id=eq.00000000-0000-4000-8000-000000000000";
+      }
+    } else {
+      filter = buildUserFilter(rawQuery, filterParam);
+    }
 
     const select = "id,full_name,phone,topup_code,region,is_provider,is_admin,verification_status,status,created_at,deleted_at,rating_avg,rating_count";
     const usersResponse = await supabaseRequest(
@@ -302,6 +360,7 @@ export async function onRequest({ request, env }) {
     const profileByUserId = new Map(profiles.map((profile) => [profile.user_id, profile]));
     const result = users.map((user) => ({
       ...user,
+      ...(isEmailSearch && matchedEmail ? { email: matchedEmail } : {}),
       provider: profileByUserId.get(user.id) || null
     }));
 
