@@ -5,7 +5,8 @@ const pages = {
   payments: { title: "إضافة رصيد", id: "payments-page" },
   commission: { title: "العمولة", id: "commission-page" },
   security: { title: "الأمان", id: "security-page" },
-  audit: { title: "سجل التدقيق", id: "audit-page" }
+  audit: { title: "سجل التدقيق", id: "audit-page" },
+  appErrors: { title: "أخطاء التطبيق", id: "app-errors-page" }
 };
 
 const loginScreen = document.getElementById("login-screen");
@@ -71,6 +72,7 @@ document.querySelectorAll(".nav-item").forEach((button) => {
     if (selected === "users") loadUsers();
     if (selected === "settings") { loadPaymentSettings(); loadHomeTips(); }
     if (selected === "audit") loadAudit();
+    if (selected === "appErrors") loadAppErrors();
     if (selected === "security") loadSecurity();
   });
 });
@@ -1139,6 +1141,8 @@ function applyAdminState(settings) {
   const readOnly = adminState.role === "support";
   const adminsNav = document.querySelector('[data-page="admins"]');
   if (adminsNav) adminsNav.classList.toggle("hidden", adminState.role !== "owner");
+  const appErrorsNav = document.querySelector('[data-page="appErrors"]');
+  if (appErrorsNav) appErrorsNav.classList.toggle("hidden", adminState.role !== "owner");
   [saveCommissionButton, saveAppSettingsButton, saveSupportButton, savePaymentSettingsButton, document.getElementById("save-security")]
     .forEach((button) => {
       if (!button) return;
@@ -1288,6 +1292,54 @@ const AUDIT_LABELS = {
   admin_remove_support_requested: "طلب إزالة مدير دعم",
   admin_remove_support_completed: "إزالة مدير دعم"
 };
+
+async function loadAppErrors() {
+  const status = document.getElementById("app-errors-status");
+  const body = document.getElementById("app-errors-table-body");
+  status.classList.remove("error");
+  status.textContent = "جارٍ تحميل أخطاء التطبيق…";
+  try {
+    const { data, error } = await supabaseClient.auth.getSession();
+    if (error || !data.session) throw new Error("انتهت جلسة الدخول. سجّل الدخول مجدداً.");
+    const response = await fetch("/api/app-errors", {
+      headers: { Authorization: "Bearer " + data.session.access_token },
+      cache: "no-store"
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(result.error || "تعذّر تحميل أخطاء التطبيق.");
+
+    body.replaceChildren();
+    for (const entry of result.entries || []) {
+      const row = document.createElement("tr");
+      const operation = entry.operation === "analyze_service_request"
+        ? "تحليل طلب زبون"
+        : entry.operation === "analyze_provider_service"
+          ? "تحليل مهارة مقدم خدمة"
+          : "عملية غير معروفة";
+      const cells = [
+        new Date(entry.created_at).toLocaleString("ar"),
+        operation,
+        entry.error_code === "GEMINI_RATE_LIMITED" ? "تجاوز حصة Gemini" : "خطأ غير معروف",
+        String(entry.http_status ?? "—"),
+        String(entry.attempt_count ?? "—"),
+        String(entry.platform ?? "—")
+      ];
+      cells.forEach((value) => {
+        const cell = document.createElement("td");
+        cell.textContent = value;
+        row.appendChild(cell);
+      });
+      body.appendChild(row);
+    }
+    const count = (result.entries || []).length;
+    status.textContent = count === 0 ? "لا توجد أخطاء مسجّلة." : "آخر " + count + " خطأ مسجّل.";
+  } catch (error) {
+    status.textContent = error.message || "تعذّر تحميل أخطاء التطبيق.";
+    status.classList.add("error");
+  }
+}
+
+document.getElementById("refresh-app-errors").addEventListener("click", () => void loadAppErrors());
 
 async function loadAudit() {
   const status = document.getElementById("audit-status");
