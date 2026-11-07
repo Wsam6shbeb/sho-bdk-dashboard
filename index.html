@@ -50,6 +50,7 @@
       <button class="nav-item" data-page="commission"><span>◈</span> العمولة</button>
       <button class="nav-item" data-page="security"><span>⛨</span> الأمان</button>
       <button class="nav-item" data-page="audit"><span>☰</span> سجل التدقيق</button>
+      <button class="nav-item hidden" data-page="appErrors"><span>⚠</span> أخطاء التطبيق</button>
       <div class="sidebar-bottom">
         <div class="status-dot"></div>
         <div><strong>اتصال آمن</strong><small>يتم التحقق من صلاحية المدير</small></div>
@@ -352,6 +353,22 @@
           <p id="security-status" class="helper" role="status"></p>
           <button id="save-security" class="primary-button" type="button">حفظ إعداد الأمان</button>
           <p class="muted">دورك الحالي: <strong id="security-role">—</strong></p>
+        </div>
+      </section>
+
+      <section id="app-errors-page" class="page hidden">
+        <div class="section-heading">
+          <div><h2>أخطاء التطبيق</h2><p>الأخطاء التشغيلية التي استنفدت محاولات إعادة تحليل Gemini. لا تُعرض نصوص المستخدمين أو بياناتهم الخاصة.</p></div>
+          <button id="refresh-app-errors" class="secondary-button" type="button">تحديث</button>
+        </div>
+        <div class="panel users-panel">
+          <p id="app-errors-status" class="helper" role="status">اضغط تحديث لعرض الأخطاء المسجّلة.</p>
+          <div class="users-table-wrap">
+            <table class="users-table">
+              <thead><tr><th>الوقت</th><th>العملية</th><th>الخطأ</th><th>الحالة</th><th>المحاولات</th><th>النظام</th></tr></thead>
+              <tbody id="app-errors-table-body"></tbody>
+            </table>
+          </div>
         </div>
       </section>
 
