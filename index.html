@@ -1,4 +1,3 @@
-
 <!doctype html>
 <html lang="ar" dir="rtl">
 <head>
@@ -9,6 +8,7 @@
   <link rel="stylesheet" href="./fonts/cairo.css">
   <link rel="stylesheet" href="./styles.css?v=2">
   <link rel="stylesheet" href="./verifications.css">
+  <link rel="stylesheet" href="./stats.css?v=1">
   <link rel="stylesheet" href="./delete-account-warning.css">
 </head>
 <body>
@@ -42,6 +42,7 @@
       </div>
       <div class="side-label">القائمة الرئيسية</div>
       <button class="nav-item active" data-page="overview"><span>▦</span> نظرة عامة</button>
+      <button class="nav-item" data-page="stats"><span>▤</span> الإحصائيات</button>
       <button class="nav-item" data-page="users"><span>♙</span> إدارة المستخدمين</button>
       <button class="nav-item hidden" data-page="admins"><span>♟</span> إدارة المدراء</button>
       <button class="nav-item" data-page="verifications"><span>✓</span> طلبات التوثيق</button>
@@ -81,6 +82,32 @@
         </div>
         <div class="section-heading"><div><h2>ملخص الإدارة</h2><p>سنضيف أرقام المستخدمين والطلبات لاحقاً بعد مراجعة صلاحيات الوصول.</p></div></div>
         <div class="panel next-panel"><div class="panel-icon">✓</div><div><h3>الحماية أولاً</h3><p>لا يمكن تعديل إعدادات التطبيق إلا من خلال جلسة مدير معتمدة.</p></div></div>
+      </section>
+
+      <section id="stats-page" class="page hidden">
+        <div class="section-heading">
+          <div><h2>الإحصائيات</h2><p>أرقام مجمّعة عن المستخدمين والطلبات والخدمات والمحافظات، بلا بيانات شخصية.</p></div>
+          <button id="refresh-stats" class="secondary-button" type="button">تحديث</button>
+        </div>
+        <div class="panel users-panel">
+          <div class="users-toolbar">
+            <select id="stats-period" aria-label="الفترة الزمنية">
+              <option value="7">آخر 7 أيام</option>
+              <option value="30" selected>آخر 30 يوماً</option>
+              <option value="90">آخر 90 يوماً</option>
+              <option value="365">آخر سنة</option>
+              <option value="0">كل التاريخ</option>
+            </select>
+            <select id="stats-stale" aria-label="بعد كم ساعة يُعدّ الطلب غير المحسوم متعثراً">
+              <option value="24">غير المحسوم متعثر بعد 24 ساعة</option>
+              <option value="48" selected>غير المحسوم متعثر بعد 48 ساعة</option>
+              <option value="72">غير المحسوم متعثر بعد 72 ساعة</option>
+              <option value="168">غير المحسوم متعثر بعد أسبوع</option>
+            </select>
+          </div>
+          <p id="stats-status" class="helper" role="status">اضغط تحديث لعرض الإحصائيات.</p>
+        </div>
+        <div id="stats-content"></div>
       </section>
 
       <section id="users-page" class="page hidden">
@@ -413,6 +440,7 @@
   <script src="./app.js?v=13"></script>
   <script src="./delete-account-warning.js?v=1"></script>
   <script src="./verifications.js?v=2"></script>
+  <script src="./stats.js?v=1"></script>
   <script src="./admins.js?v=1"></script>
 </body>
 </html>
