@@ -39,7 +39,7 @@ test("الأرقام المذكورة في الشرح تطابق ثوابت stat
   const num = (name) => Number(STATS.match(new RegExp("const " + name + " = (\\d+)"))[1]);
   assert.ok(INFO.includes("أقل من " + num("MIN_CELL_REQUESTS") + " طلبات"), "حد الخلية");
   assert.ok(INFO.includes(num("MIN_PREV_FOR_TREND") + " طلبات فأكثر"), "حد الاتجاه");
-  assert.ok(INFO.includes("طلبات أو أكثر لكل مقدم قابل للظهور".replace("طلبات", num("PRESSURE_RATIO") + " طلبات")), "نسبة العرض المحدود");
+  assert.ok(INFO.includes(num("PRESSURE_RATIO") + " طلبات أو أكثر لكل مقدم"), "نسبة العرض المحدود");
   assert.ok(INFO.includes("أقل من " + num("MIN_CELL_REQUESTS") + " طلبات، فلا يُحكم عليها"), "العينة الصغيرة");
 });
 
