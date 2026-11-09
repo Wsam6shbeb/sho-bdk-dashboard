@@ -1,0 +1,26 @@
+{
+  "_source": "transcribed from src/types/database.ts (blob 80dae51d3d756b85cc35168606aa8d9837e25bbe) in supabase-sho-bdk; the live DB may differ - see database/verify_stats_assumptions.sql",
+  "tables": {
+    "agreements": ["commission_amount","conversation_id","created_at","currency","expires_at","id","phone_shared","price","price_confidence","price_source","provider_id","rejection_reason","request_id","requester_id","responded_at","state"],
+    "app_error_log": ["id","user_id","operation","error_code","http_status","attempt_count","platform","created_at"],
+    "app_settings": ["key","updated_at","value"],
+    "candidates": ["created_at","excluded_reason","id","match_metadata","match_score","provider_id","rank","request_id"],
+    "conversations": ["created_at","id","locked_reason","provider_id","request_id","requester_id","state","updated_at","writable_until"],
+    "ledger_entries": ["amount","balance_after","created_at","created_by","currency","entry_type","id","idempotency_key","reference_id","reference_type","user_id"],
+    "provider_profiles": ["bio","cancellations_count","commitment_rate","completed_services_count","created_at","is_available","rating_avg","rating_count","response_speed_avg_sec","updated_at","user_id"],
+    "provider_services": ["created_at","description","experience_years","id","is_active","price_max","price_min","provider_id","skill_id","structured_data","updated_at"],
+    "ratings": ["auto_completed","comment","created_at","from_user_id","id","request_id","score","tags","to_user_id"],
+    "reports": ["created_at","details","id","reason","reporter_id","request_id","status","target_user_id"],
+    "service_requests": ["ai_confidence","cancelled_at","clarification_question","completed_at","created_at","id","matched_at","needs_clarification","provider_finished_at","raw_text","service_area","additional_info","region","requester_id","state","structured_data","updated_at","urgency"],
+    "users": ["avatar_url","created_at","deleted_at","full_name","id","is_admin","is_provider","phone","phone_verified_at","rating_avg","rating_count","region","status","topup_code","updated_at","verification_status"],
+    "verifications": ["created_at","id","id_document_url","rejection_reason","reviewed_at","reviewed_by","selfie_url","status","user_id"],
+    "wallets": ["available_balance","currency","updated_at","user_id"]
+  },
+  "enums": {
+    "agreement_state": ["pending","active","rejected","expired","cancelled"],
+    "ledger_entry_type": ["commission_debit","topup_credit","bonus_credit","refund_credit","adjustment_credit","adjustment_debit"],
+    "report_status": ["open","reviewed","resolved","dismissed"],
+    "request_state": ["draft","submitted","clarification","matching","candidates_ready","negotiating","agreement_pending_provider","active","completion_pending_rating","completed","cancelled","expired"],
+    "verification_status": ["pending","approved","rejected"]
+  }
+}

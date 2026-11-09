@@ -1,0 +1,95 @@
+/* صفحة الإحصائيات. الألوان كلها عبر كلاسات لأن CSP الحالية لا تسمح بـ style المضمّن. */
+#stats-content { display: grid; gap: 16px; }
+.stats-section-title { margin: 8px 0 0; font-size: 18px; color: #111827; }
+.stats-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
+.stats-kpi { background: #fff; border: 1px solid #e5e7eb; border-radius: 14px; padding: 14px 16px; display: grid; gap: 4px; align-content: start; }
+.stats-kpi span { color: #6b7280; font-size: 13px; }
+.stats-kpi strong { font-size: 24px; color: #111827; }
+.stats-kpi small { color: #6b7280; font-size: 12px; line-height: 1.5; }
+.stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: 16px; }
+.stats-panel { overflow: hidden; }
+.stats-panel h3 { margin: 0 0 4px; }
+.stats-help { margin: 4px 0 10px; font-size: 13px; line-height: 1.6; color: #6b7280; }
+.stats-empty { color: #6b7280; padding: 12px 0; margin: 0; }
+.stats-scroll { overflow-x: auto; }
+.stats-note { background: #f9fafb; border: 1px dashed #d1d5db; border-radius: 12px; padding: 12px 14px; font-size: 13px; color: #4b5563; line-height: 1.7; }
+.stats-note ul { margin: 6px 0 0; padding-inline-start: 18px; display: grid; gap: 4px; }
+.stats-warn { background: #fffbeb; border: 1px solid #fde68a; border-radius: 12px; padding: 10px 14px; font-size: 13px; color: #92400e; line-height: 1.7; }
+
+.stats-donut-wrap { display: flex; align-items: flex-start; gap: 18px; flex-wrap: wrap; }
+.stats-donut { width: 190px; height: 190px; flex: none; }
+.donut-track { fill: none; stroke: #e5e7eb; stroke-width: 5; }
+.donut-seg { fill: none; stroke-width: 5; }
+.donut-total { font-size: 7px; font-weight: 700; fill: #111827; text-anchor: middle; }
+.donut-caption { font-size: 3px; fill: #6b7280; text-anchor: middle; }
+
+.stats-legend { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; flex: 1; min-width: 240px; }
+.stats-legend-group { font-size: 12px; font-weight: 700; color: #374151; margin-top: 4px; }
+.stats-legend li.legend-row { display: grid; grid-template-columns: 12px 1fr auto; column-gap: 8px; align-items: baseline; font-size: 14px; }
+.stats-legend .legend-help { grid-column: 2 / 4; font-size: 12px; color: #6b7280; line-height: 1.5; }
+.stats-legend .legend-value { color: #374151; white-space: nowrap; }
+.dot { display: inline-block; width: 11px; height: 11px; border-radius: 50%; flex: none; }
+.stats-legend-inline { display: flex; gap: 14px; flex-wrap: wrap; margin: 6px 0 0; font-size: 13px; color: #374151; }
+.stats-legend-inline span { display: inline-flex; align-items: center; gap: 6px; }
+
+.stats-chart { width: 100%; height: auto; direction: ltr; display: block; }
+.chart-grid { stroke: #e5e7eb; stroke-width: 1; }
+.chart-axis { fill: #6b7280; font-size: 10px; }
+.chart-axis-y { text-anchor: end; }
+.chart-axis-x { text-anchor: middle; }
+.chart-line { fill: none; stroke-width: 2.2; stroke-linejoin: round; stroke-linecap: round; }
+.chart-bar { opacity: .9; }
+.chart-dot { stroke: none; }
+
+.stats-stack, .stats-bar { width: 100%; height: 10px; border-radius: 5px; background: #f3f4f6; display: block; }
+.stats-table { width: 100%; }
+.stats-table td, .stats-table th { vertical-align: middle; }
+.stats-table .bar-cell { min-width: 120px; }
+.stats-badge { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+.badge-bad { background: #fee2e2; color: #991b1b; }
+.badge-warn { background: #fef3c7; color: #92400e; }
+.badge-ok { background: #dcfce7; color: #166534; }
+.badge-est { background: #e0e7ff; color: #3730a3; margin-inline-start: 6px; }
+.trend-up { color: #166534; font-weight: 600; white-space: nowrap; }
+.trend-down { color: #991b1b; font-weight: 600; white-space: nowrap; }
+.trend-flat { color: #6b7280; white-space: nowrap; }
+
+.heat-table td.heat { text-align: center; min-width: 64px; }
+.heat-0 { background: #f9fafb; color: #9ca3af; }
+.heat-1 { background: #dbeafe; }
+.heat-2 { background: #bfdbfe; }
+.heat-3 { background: #93c5fd; }
+.heat-4 { background: #3b82f6; color: #fff; }
+
+/* ألوان النتائج والسلاسل: fill للـ SVG، background لعناصر HTML، stroke للخطوط */
+.c-completed { background: #15803d; fill: #15803d; stroke: #15803d; }
+.c-agreed_active { background: #4ade80; fill: #4ade80; stroke: #4ade80; }
+.c-cancelled { background: #6b7280; fill: #6b7280; stroke: #6b7280; }
+.c-expired { background: #9ca3af; fill: #9ca3af; stroke: #9ca3af; }
+.c-contact_no_agreement { background: #2563eb; fill: #2563eb; stroke: #2563eb; }
+.c-candidates_no_contact { background: #7c3aed; fill: #7c3aed; stroke: #7c3aed; }
+.c-no_candidates_unconfirmed { background: #d97706; fill: #d97706; stroke: #d97706; }
+.c-no_candidates_ai_failed { background: #ea580c; fill: #ea580c; stroke: #ea580c; }
+.c-no_candidates_incomplete { background: #f59e0b; fill: #f59e0b; stroke: #f59e0b; }
+.c-in_progress { background: #d1d5db; fill: #d1d5db; stroke: #d1d5db; }
+.c-created { background: #2563eb; fill: #2563eb; stroke: #2563eb; }
+.c-agreements { background: #16a34a; fill: #16a34a; stroke: #16a34a; }
+.c-users { background: #7c3aed; fill: #7c3aed; stroke: #7c3aed; }
+.c-hour { background: #0891b2; fill: #0891b2; stroke: #0891b2; }
+.c-rating { background: #f59e0b; fill: #f59e0b; stroke: #f59e0b; }
+.c-demand { background: #2563eb; fill: #2563eb; stroke: #2563eb; }
+.c-supply { background: #16a34a; fill: #16a34a; stroke: #16a34a; }
+.c-ready { background: #16a34a; fill: #16a34a; stroke: #16a34a; }
+.c-notready { background: #d1d5db; fill: #d1d5db; stroke: #d1d5db; }
+
+/* خطوط ودوائر الرسم: لا تعبئة للخطوط، ولا حد للنقاط والأشرطة */
+.donut-seg.c-completed, .donut-seg.c-agreed_active, .donut-seg.c-cancelled, .donut-seg.c-expired,
+.donut-seg.c-contact_no_agreement, .donut-seg.c-candidates_no_contact, .donut-seg.c-no_candidates_unconfirmed,
+.donut-seg.c-no_candidates_ai_failed, .donut-seg.c-no_candidates_incomplete, .donut-seg.c-in_progress { fill: none; }
+.chart-line.c-created, .chart-line.c-agreements { fill: none; }
+.stats-chart .chart-dot, .stats-chart .chart-bar, .stats-stack rect, .stats-bar rect { stroke: none; }
+
+@media (max-width: 640px) {
+  .stats-donut { width: 160px; height: 160px; }
+  .stats-kpi strong { font-size: 21px; }
+}
