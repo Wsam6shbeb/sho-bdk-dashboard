@@ -1,0 +1,18 @@
+/* أزرار الشرح (i) في صفحة الإحصائيات. يعتمد الزر على نمط .setting-info-button الموجود في styles.css. */
+
+/* عنوان بطاقة المؤشر وعنوان اللوحة: النص ثم الزر على سطر واحد */
+.stats-kpi > span.has-info,
+.stats-panel > h3.has-info { display: flex; align-items: center; gap: 8px; }
+
+/* الجداول وصفوف التعريف: زر أصغر بجانب النص */
+.stats-table th .setting-info-button,
+.stats-table td .setting-info-button,
+.stats-legend .legend-row .setting-info-button {
+  width: 18px; height: 18px; font-size: 11px;
+  margin-inline-start: 6px; vertical-align: middle;
+}
+.stats-kpi > span .setting-info-button { width: 19px; height: 19px; font-size: 12px; }
+
+/* قائمتا الفترة والمهلة أعلى الصفحة: القائمة والزر في صف واحد */
+.stats-select-row { display: flex; align-items: center; gap: 8px; flex: 1 1 240px; min-width: 0; }
+.stats-select-row select { flex: 1; width: auto; min-width: 0; }
