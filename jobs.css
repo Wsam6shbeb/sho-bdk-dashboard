@@ -1,0 +1,23 @@
+/* صفحة فرص العمل — نفس ألوان اللوحة (#263f7a / #dce1eb / #b42318) */
+.jobs-tabs{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 12px}
+.jobs-tab{border:1px solid #dce1eb;background:#fff;color:#364152;border-radius:10px;padding:9px 16px;font:inherit;font-size:13px;font-weight:700;cursor:pointer}
+.jobs-tab:hover{background:#f4f6fb}
+.jobs-tab.active{background:#263f7a;border-color:#263f7a;color:#fff}
+.jobs-badge{display:inline-block;min-width:18px;padding:1px 6px;margin-inline-start:4px;border-radius:30px;background:#b42318;color:#fff;font-size:11px;text-align:center}
+.jobs-tab-panel{margin-bottom:16px}
+.jobs-form{margin-bottom:16px}
+.jobs-form h3{margin:0 0 10px}
+.jobs-form-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px}
+.jobs-actions{display:flex;flex-wrap:wrap;gap:6px}
+.jobs-sub{display:block;margin-top:3px;font-size:11px;line-height:1.6;color:#778195}
+.jobs-title-cell{max-width:260px}
+.jobs-title-cell strong{display:block;font-size:13px;color:#182230}
+.jobs-pager{display:flex;align-items:center;justify-content:center;gap:14px;margin-top:14px}
+.jobs-pager .helper{margin:0}
+.jobs-status-pill{display:inline-flex;align-items:center;border-radius:30px;padding:4px 9px;font-size:11px;font-weight:700;background:#eef1f6;color:#364152}
+.jobs-status-pill.is-hidden{background:#fff1f0;color:#b42318}
+.jobs-status-pill.is-expired{background:#fff7e6;color:#8a5a00}
+.jobs-ad-thumb{display:block;width:96px;height:32px;object-fit:cover;border-radius:6px;background:#e9edf4}
+.jobs-ad-link{font-size:12px;color:#263f7a}
+.jobs-readonly-note{margin:0 0 12px;padding:10px 12px;border-radius:10px;background:#fff7e6;color:#8a5a00;font-size:12px}
+@media(max-width:700px){.jobs-title-cell{max-width:none}}

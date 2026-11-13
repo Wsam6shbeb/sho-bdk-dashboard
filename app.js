@@ -1,6 +1,7 @@
 const pages = {
   users: { title: "إدارة المستخدمين", id: "users-page" },
   admins: { title: "إدارة المدراء", id: "admins-page" },
+  jobs: { title: "فرص العمل", id: "jobs-page" },
   settings: { title: "إعدادات التطبيق", id: "settings-page" },
   payments: { title: "إضافة رصيد", id: "payments-page" },
   commission: { title: "العمولة", id: "commission-page" },
@@ -1290,7 +1291,16 @@ const AUDIT_LABELS = {
   admin_promote_support_requested: "طلب إضافة مدير دعم",
   admin_promote_support_completed: "إضافة مدير دعم",
   admin_remove_support_requested: "طلب إزالة مدير دعم",
-  admin_remove_support_completed: "إزالة مدير دعم"
+  admin_remove_support_completed: "إزالة مدير دعم",
+  admin_set_job_status: "تغيير حالة وظيفة",
+  admin_delete_job: "حذف وظيفة",
+  admin_resolve_job_report: "قرار في بلاغ وظيفة",
+  admin_create_job_ad: "إنشاء إعلان وظائف",
+  admin_update_job_ad: "تعديل إعلان وظائف",
+  admin_delete_job_ad: "حذف إعلان وظائف",
+  admin_add_job_blocked_word: "إضافة كلمة محظورة",
+  admin_delete_job_blocked_word: "حذف كلمة محظورة",
+  admin_set_jobs_settings: "تعديل إعدادات الوظائف"
 };
 
 async function loadAppErrors() {

@@ -21,4 +21,4 @@ jobs:
         with:
           node-version: 22
       - name: Run dashboard tests
-        run: node --check app.js && node --check admins.js && node --experimental-default-type=module --test tests/*.test.mjs
+        run: node --check app.js && node --check admins.js && node --check jobs.js && node --experimental-default-type=module --test tests/*.test.mjs
