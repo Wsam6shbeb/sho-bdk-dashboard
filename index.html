@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="./fonts/cairo.css">
   <link rel="stylesheet" href="./styles.css?v=2">
   <link rel="stylesheet" href="./verifications.css">
+  <link rel="stylesheet" href="./jobs.css?v=1">
   <link rel="stylesheet" href="./stats.css?v=1">
   <link rel="stylesheet" href="./stats-info.css?v=1">
   <link rel="stylesheet" href="./delete-account-warning.css">
@@ -47,6 +48,7 @@
       <button class="nav-item" data-page="users"><span>♙</span> إدارة المستخدمين</button>
       <button class="nav-item hidden" data-page="admins"><span>♟</span> إدارة المدراء</button>
       <button class="nav-item" data-page="verifications"><span>✓</span> طلبات التوثيق</button>
+      <button class="nav-item" data-page="jobs"><span>◉</span> فرص العمل</button>
       <button class="nav-item" data-page="settings"><span>⚙</span> إعدادات التطبيق</button>
       <button class="nav-item" data-page="payments"><span>▣</span> إضافة رصيد</button>
       <button class="nav-item" data-page="commission"><span>◈</span> العمولة</button>
@@ -211,6 +213,122 @@
             <thead><tr><th>المستخدم</th><th>الهاتف</th><th>تاريخ الطلب</th><th>الحالة</th><th>إجراء</th></tr></thead>
             <tbody id="verifications-table-body"></tbody>
           </table></div>
+        </div>
+      </section>
+
+      <section id="jobs-page" class="page hidden">
+        <div class="section-heading">
+          <div><h2>فرص العمل</h2><p>إدارة الوظائف والبلاغات والإعلانات التي تظهر بين الوظائف. الإشراف على الوظائف والبلاغات للمالك والدعم، أما الإعلانات والكلمات المحظورة والإعدادات فللمالك فقط.</p></div>
+          <button id="jobs-refresh" class="secondary-button" type="button">تحديث</button>
+        </div>
+        <div class="user-stats">
+          <div class="user-stat"><span>وظائف فعّالة</span><strong id="jobs-stat-active">—</strong></div>
+          <div class="user-stat"><span>وظائف مخفية</span><strong id="jobs-stat-hidden">—</strong></div>
+          <div class="user-stat"><span>بلاغات مفتوحة</span><strong id="jobs-stat-reports">—</strong></div>
+          <div class="user-stat"><span>إعلانات ظاهرة الآن</span><strong id="jobs-stat-ads">—</strong></div>
+          <div class="user-stat"><span>مشاهدات الإعلانات</span><strong id="jobs-stat-impressions">—</strong></div>
+          <div class="user-stat"><span>نقرات الإعلانات</span><strong id="jobs-stat-clicks">—</strong></div>
+        </div>
+        <div class="jobs-tabs" role="tablist" aria-label="أقسام فرص العمل">
+          <button class="jobs-tab active" type="button" role="tab" data-jobs-tab="jobs">الوظائف</button>
+          <button class="jobs-tab" type="button" role="tab" data-jobs-tab="reports">البلاغات <span id="jobs-reports-badge" class="jobs-badge hidden"></span></button>
+          <button class="jobs-tab" type="button" role="tab" data-jobs-tab="ads">الإعلانات</button>
+          <button class="jobs-tab" type="button" role="tab" data-jobs-tab="words">الكلمات المحظورة</button>
+          <button class="jobs-tab" type="button" role="tab" data-jobs-tab="settings">الإعدادات</button>
+        </div>
+        <p id="jobs-status" class="helper" role="status">اضغط تحديث لعرض البيانات.</p>
+
+        <div id="jobs-tab-jobs" class="panel users-panel jobs-tab-panel">
+          <div class="users-toolbar">
+            <select id="jobs-status-filter" aria-label="تصفية الوظائف">
+              <option value="">كل الوظائف</option><option value="active">فعّالة</option><option value="expired">منتهية</option>
+              <option value="closed">مغلقة</option><option value="hidden">مخفية</option>
+            </select>
+            <input id="jobs-search" type="search" maxlength="100" placeholder="ابحث بالعنوان أو الوصف أو المدينة" aria-label="بحث في الوظائف">
+          </div>
+          <div class="users-table-wrap"><table class="users-table">
+            <thead><tr><th>الوظيفة</th><th>المكان</th><th>صاحب الوظيفة</th><th>التواصل</th><th>الحالة</th><th>بلاغات</th><th>إجراء</th></tr></thead>
+            <tbody id="jobs-table-body"></tbody>
+          </table></div>
+          <div class="jobs-pager">
+            <button id="jobs-prev" class="secondary-button" type="button">السابق</button>
+            <span id="jobs-page-info" class="helper"></span>
+            <button id="jobs-next" class="secondary-button" type="button">التالي</button>
+          </div>
+        </div>
+
+        <div id="jobs-tab-reports" class="panel users-panel jobs-tab-panel hidden">
+          <div class="users-toolbar">
+            <select id="job-reports-filter" aria-label="تصفية البلاغات">
+              <option value="open">مفتوحة</option><option value="resolved">تمت معالجتها</option>
+              <option value="dismissed">متجاهَلة</option><option value="all">الكل</option>
+            </select>
+          </div>
+          <div class="users-table-wrap"><table class="users-table">
+            <thead><tr><th>الوظيفة</th><th>السبب</th><th>التفاصيل</th><th>المبلِّغ</th><th>التاريخ</th><th>الحالة</th><th>إجراء</th></tr></thead>
+            <tbody id="job-reports-table-body"></tbody>
+          </table></div>
+        </div>
+
+        <div id="jobs-tab-ads" class="jobs-tab-panel hidden">
+          <form id="job-ad-form" class="panel jobs-form">
+            <h3 id="job-ad-form-title">إعلان جديد</h3>
+            <div class="settings-grid">
+              <div class="setting-field"><label for="job-ad-title">عنوان الإعلان (للإدارة فقط)</label><input id="job-ad-title" type="text" maxlength="80" required></div>
+              <div class="setting-field"><label for="job-ad-priority">الأولوية</label><input id="job-ad-priority" type="number" min="-1000" max="1000" step="1" value="0"><small>الأعلى يظهر أولاً.</small></div>
+              <div class="setting-field"><label for="job-ad-image">رابط الصورة</label><input id="job-ad-image" type="url" maxlength="500" placeholder="https://..." required><small>رابط https مباشر لصورة عريضة (مثلاً 1200×400).</small></div>
+              <div class="setting-field"><label for="job-ad-link">رابط الإعلان (اختياري)</label><input id="job-ad-link" type="url" maxlength="500" placeholder="https://..."><small>يفتح عند ضغط المستخدم على الإعلان.</small></div>
+              <div class="setting-field"><label for="job-ad-starts">يبدأ في (اختياري)</label><input id="job-ad-starts" type="datetime-local"></div>
+              <div class="setting-field"><label for="job-ad-ends">ينتهي في (اختياري)</label><input id="job-ad-ends" type="datetime-local"></div>
+              <div class="setting-field"><label for="job-ad-active">الحالة</label><select id="job-ad-active"><option value="true">مفعّل</option><option value="false">متوقف</option></select></div>
+            </div>
+            <div class="jobs-form-actions">
+              <button id="job-ad-save" class="primary-button" type="submit">حفظ الإعلان</button>
+              <button id="job-ad-cancel" class="secondary-button hidden" type="button">إلغاء التعديل</button>
+            </div>
+          </form>
+          <div class="panel users-panel">
+            <div class="users-table-wrap"><table class="users-table">
+              <thead><tr><th>الإعلان</th><th>الصورة</th><th>الجدولة</th><th>الأولوية</th><th>المشاهدات / النقرات</th><th>الحالة</th><th>إجراء</th></tr></thead>
+              <tbody id="job-ads-table-body"></tbody>
+            </table></div>
+          </div>
+        </div>
+
+        <div id="jobs-tab-words" class="jobs-tab-panel hidden">
+          <form id="job-word-form" class="panel jobs-form">
+            <h3>إضافة كلمة محظورة</h3>
+            <p class="muted">يتم تجاهل التشكيل والتطويل والرموز بين الحروف عند الفحص، فيكفي كتابة الكلمة بصيغتها المعتادة.</p>
+            <div class="settings-grid">
+              <div class="setting-field"><label for="job-word-input">الكلمة</label><input id="job-word-input" type="text" maxlength="60" required></div>
+              <div class="setting-field"><label for="job-word-whole">طريقة المطابقة</label>
+                <select id="job-word-whole"><option value="false">داخل النص (للكلمات الطويلة)</option><option value="true">كلمة كاملة فقط (للكلمات القصيرة)</option></select>
+                <small>اختر «كلمة كاملة» للكلمات القصيرة حتى لا تُحظر كلمات سليمة تحتويها.</small>
+              </div>
+            </div>
+            <div class="jobs-form-actions"><button id="job-word-add" class="primary-button" type="submit">إضافة الكلمة</button></div>
+          </form>
+          <div class="panel users-panel">
+            <div class="users-table-wrap"><table class="users-table">
+              <thead><tr><th>الكلمة</th><th>المطابقة</th><th>أُضيفت في</th><th>إجراء</th></tr></thead>
+              <tbody id="job-words-table-body"></tbody>
+            </table></div>
+          </div>
+        </div>
+
+        <div id="jobs-tab-settings" class="jobs-tab-panel hidden">
+          <form id="jobs-settings-form" class="panel jobs-form">
+            <div class="settings-grid">
+              <div class="setting-field"><label for="jobs-set-enabled">قسم فرص العمل في التطبيق</label>
+                <select id="jobs-set-enabled"><option value="false">متوقف (مخفي عن المستخدمين)</option><option value="true">مفعّل</option></select>
+                <small>عند الإيقاف يختفي التبويب ويُمنع نشر وظائف جديدة، بدون تحديث للتطبيق.</small></div>
+              <div class="setting-field"><label for="jobs-set-ad-every">عدد الوظائف بين كل إعلان</label><input id="jobs-set-ad-every" type="number" min="2" max="20" step="1" required></div>
+              <div class="setting-field"><label for="jobs-set-max-active">الحد الأقصى للوظائف الفعّالة لكل مستخدم</label><input id="jobs-set-max-active" type="number" min="1" max="50" step="1" required></div>
+              <div class="setting-field"><label for="jobs-set-expiry">مدة بقاء الوظيفة (يوم)</label><input id="jobs-set-expiry" type="number" min="1" max="365" step="1" required></div>
+              <div class="setting-field"><label for="jobs-set-threshold">عدد البلاغات لإخفاء الوظيفة تلقائياً</label><input id="jobs-set-threshold" type="number" min="0" max="50" step="1" required><small>صفر يعطّل الإخفاء التلقائي.</small></div>
+            </div>
+            <div class="jobs-form-actions"><button id="jobs-settings-save" class="primary-button" type="submit">حفظ إعدادات الوظائف</button></div>
+          </form>
         </div>
       </section>
 
@@ -438,9 +556,10 @@
 
   <script src="./config.js"></script>
   <script src="./vendor/supabase.js"></script>
-  <script src="./app.js?v=13"></script>
+  <script src="./app.js?v=14"></script>
   <script src="./delete-account-warning.js?v=1"></script>
   <script src="./verifications.js?v=2"></script>
+  <script src="./jobs.js?v=1"></script>
   <script src="./stats.js?v=1"></script>
   <script src="./stats-info.js?v=1"></script>
   <script src="./admins.js?v=1"></script>
