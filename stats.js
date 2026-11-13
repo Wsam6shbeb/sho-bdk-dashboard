@@ -17,8 +17,7 @@
 
   const SVG_NS = "http://www.w3.org/2000/svg";
   // حدود عرض فقط (لا تغيّر الأرقام): تقلل الاستنتاج من عينات صغيرة.
-  const MIN_CELL_REQUESTS = 3; // أقل عدد طلبات لعرض خلية (خدمة × محافظة)
-  const MIN_PREV_FOR_TREND = 5; // أقل عدد طلبات بالفترة السابقة لعرض نسبة التغير
+  const MIN_CELL_REQUESTS = 3; // أقل عدد طلبات لاعتبار العينة كافية لتقييم العرض
   const PRESSURE_RATIO = 5; // طلبات لكل مقدم قابل للظهور تُعدّ "عرضاً محدوداً"
 
   // النتائج: confirmed = حالة مسجّلة في قاعدة البيانات؛ inferred = استنتاج من وجود/غياب سجلات؛ progress = حديث.
@@ -239,7 +238,7 @@
   }
 
   function table(headers, rows, extraClass) {
-    const wrap = h("div", "users-table-wrap stats-scroll");
+    const wrap = h("div", "stats-table-wrap");
     const element = h("table", "users-table stats-table" + (extraClass ? " " + extraClass : ""));
     const head = document.createElement("tr");
     headers.forEach((text) => head.appendChild(h("th", null, text)));
@@ -277,19 +276,12 @@
     const noCandidates = NO_CANDIDATE_KEYS.reduce((sum, key) => sum + count(key), 0);
     return { total, agreed, resolved, noCandidates, inProgress: count("in_progress"), successRate: pct(agreed, resolved), count };
   }
-  function trendNode(current, previous) {
-    if (previous === null || previous === undefined || n(previous) < MIN_PREV_FOR_TREND) return h("span", "trend-flat", "—");
-    const change = Math.round(((n(current) - n(previous)) / n(previous)) * 100);
-    if (change === 0) return h("span", "trend-flat", "ثابت");
-    return change > 0
-      ? h("span", "trend-up", "▲ " + fmt(change) + "٪")
-      : h("span", "trend-down", "▼ " + fmt(Math.abs(change)) + "٪");
-  }
-  function supplyFlag(requests, providers) {
-    if (n(requests) < MIN_CELL_REQUESTS) return h("span", "trend-flat", "عينة صغيرة");
-    if (n(providers) === 0) return badge("لا يوجد مقدم قابل للظهور", "bad");
-    if (n(requests) / n(providers) >= PRESSURE_RATIO) return badge("عرض محدود", "warn");
-    return h("span", "trend-flat", "—");
+  // علامة العرض: لا تُعرض لعينة صغيرة، ولا تُعرض عندما يكون العرض كافياً.
+  function supplyBadge(requests, searchable) {
+    if (n(requests) < MIN_CELL_REQUESTS) return null;
+    if (n(searchable) === 0) return badge("لا يوجد مقدم قابل للظهور", "bad");
+    if (n(requests) / n(searchable) >= PRESSURE_RATIO) return badge("عرض محدود", "warn");
+    return null;
   }
 
   // ------------------------------------------------------------ الأقسام
@@ -409,67 +401,6 @@
     }
     const items = points.map((point) => ({ label: point.d, short: shortLabel(point.d), value: point.n }));
     box.appendChild(barChart(items, "users", Math.max(1, Math.ceil(items.length / 7))));
-    return box;
-  }
-
-  function renderCategories(data) {
-    const box = panel(
-      "الخدمات المطلوبة",
-      "التصنيف عام (13 تصنيفاً يحدده الذكاء الاصطناعي) والمطابقة الفعلية تعتمد على كلمات الخدمة لا على التصنيف، فالمؤشرات هنا تقريبية وليست إثباتاً لنقص."
-    );
-    const categories = rows(data.categories);
-    if (categories.length === 0) {
-      box.appendChild(empty("لا توجد طلبات مصنّفة في هذه الفترة."));
-      return box;
-    }
-    const maxRequests = Math.max(...categories.map((row) => n(row.requests)));
-    const body = categories.map((row) => [
-      row.category || "—",
-      fmt(row.requests),
-      trendNode(row.requests, row.prev_requests),
-      simpleBar(row.requests, maxRequests, "demand", "الطلبات"),
-      fmtPct(pct(row.agreed, row.resolved)) + " (" + fmt(row.agreed) + " من " + fmt(row.resolved) + ")",
-      fmt(row.no_candidates),
-      fmt(row.searchable_providers),
-      row.category === "أخرى" ? h("span", "trend-flat", "تصنيف عام") : supplyFlag(row.requests, row.searchable_providers)
-    ]);
-    box.appendChild(table(
-      ["التصنيف", "الطلبات", "التغير عن الفترة السابقة", "", "نسبة الاتفاق (من المحسومة)", "بلا مرشحين (تقديري)", "مقدمون قابلون للظهور", "ملاحظة"],
-      body
-    ));
-    box.appendChild(h("p", "stats-help", "التغير يظهر عند وجود " + fmt(MIN_PREV_FOR_TREND) + " طلبات فأكثر بالفترة السابقة. «عرض محدود» = " + fmt(PRESSURE_RATIO) + " طلبات أو أكثر لكل مقدم قابل للظهور. «بلا مرشحين» تقدير لا يثبت غياب مقدمي الخدمة."));
-    return box;
-  }
-
-  function renderCells(data) {
-    const box = panel(
-      "الخدمة والمحافظة معاً",
-      "يقارن طلبات كل تصنيف في كل محافظة بمقدمي الخدمة القابلين للظهور في التصنيف نفسه والمحافظة نفسها (محافظة الخدمة نفسها، وإن لم تُحدَّد فمحافظة حساب مقدم الخدمة)."
-    );
-    const all = rows(data.cells);
-    const shown = all.filter((cell) => n(cell.requests) >= MIN_CELL_REQUESTS);
-    if (shown.length === 0) {
-      box.appendChild(empty(all.length === 0 ? "لا توجد طلبات مصنّفة في هذه الفترة." : "لا توجد خلية فيها " + fmt(MIN_CELL_REQUESTS) + " طلبات أو أكثر بعد."));
-      return box;
-    }
-    const body = shown.map((cell) => {
-      const unknownRegion = cell.region === "غير محدد";
-      const providers = n(cell.searchable_providers);
-      return [
-        cell.category,
-        cell.region,
-        fmt(cell.requests),
-        fmt(cell.no_candidates),
-        unknownRegion ? "—" : fmt(providers),
-        unknownRegion ? "—" : providers > 0 ? (n(cell.requests) / providers).toLocaleString("ar", { maximumFractionDigits: 1 }) : "—",
-        unknownRegion ? h("span", "trend-flat", "المحافظة غير محددة") : supplyFlag(cell.requests, providers)
-      ];
-    });
-    box.appendChild(table(["التصنيف", "المحافظة", "الطلبات", "بلا مرشحين (تقديري)", "مقدمون قابلون للظهور", "طلبات لكل مقدم", "ملاحظة"], body));
-    const hidden = all.length - shown.length;
-    box.appendChild(h("p", "stats-help",
-      "تُعرض الخلايا التي فيها " + fmt(MIN_CELL_REQUESTS) + " طلبات فأكثر" + (hidden > 0 ? " (أُخفيت " + fmt(hidden) + " خلية أصغر)" : "") +
-      ". مقدم الخدمة الذي لم يُحدَّد تصنيف خدماته أو محافظته لا يدخل في هذه المقارنة."));
     return box;
   }
 
@@ -652,21 +583,214 @@
   function render(result) {
     const data = obj(result.stats);
     content.replaceChildren();
-    content.appendChild(renderNotice(data));
-    content.appendChild(renderUsers(data));
-    content.appendChild(renderRequestKpis(data));
-    const row1 = h("div", "stats-grid");
-    row1.append(renderOutcomes(data), renderQuality(data));
-    const row2 = h("div", "stats-grid");
-    row2.append(renderSeries(data), renderSignups(data));
-    content.append(row1, row2, renderCategories(data), renderCells(data), renderRegions(data), renderProviderReadiness(data));
-    const row3 = h("div", "stats-grid");
-    row3.append(renderTiming(data), renderHeatmap(data));
-    content.appendChild(row3);
-    content.appendChild(renderManagement(data));
+    // عمود واحد من الأعلى للأسفل: التنبيه، عدادات المستخدمين، قسم الخدمات، ثم بقية المؤشرات.
+    content.append(
+      renderNotice(data),
+      renderUsers(data),
+      servicesBox,
+      renderRequestKpis(data),
+      renderOutcomes(data),
+      renderQuality(data),
+      renderSeries(data),
+      renderSignups(data),
+      renderRegions(data),
+      renderProviderReadiness(data),
+      renderTiming(data),
+      renderHeatmap(data),
+      renderManagement(data)
+    );
     const owner = renderOwner(data);
     if (owner) content.appendChild(owner);
     content.appendChild(renderDefinitions());
+  }
+
+  // ------------------------------------------------------------ قسم الخدمات: ماذا يُطلب وماذا يُعرض
+  const servicesState = { region: "", area: "" };
+  let servicesToken = 0;
+  const servicesBox = h("section", "panel stats-panel stats-services");
+  servicesBox.appendChild(h("p", "stats-empty", "جارٍ تحميل الخدمات…"));
+
+  function optionNode(value, text) {
+    const option = h("option", null, text);
+    option.value = value;
+    return option;
+  }
+  function filterField(labelText, select) {
+    const field = h("label", "stats-filter");
+    field.append(h("span", null, labelText), select);
+    return field;
+  }
+
+  function renderServiceFilters(data) {
+    const regions = rows(obj(data.filters).regions);
+    const chosen = regions.find((region) => region.name === servicesState.region);
+    const online = servicesState.region === "اونلاين";
+
+    const regionSelect = h("select");
+    regionSelect.setAttribute("aria-label", "المحافظة");
+    regionSelect.appendChild(optionNode("", "كل المحافظات"));
+    regions.forEach((region) => regionSelect.appendChild(optionNode(String(region.name), String(region.name))));
+    regionSelect.value = chosen ? servicesState.region : "";
+
+    const areaSelect = h("select");
+    areaSelect.setAttribute("aria-label", "المنطقة");
+    areaSelect.appendChild(optionNode("", "كل المناطق"));
+    if (chosen && !online) {
+      areaSelect.appendChild(optionNode("__none__", "غير محددة المنطقة"));
+      rows(chosen.areas).forEach((area) => areaSelect.appendChild(optionNode(String(area.name), String(area.name) + " (" + fmt(area.n) + ")")));
+    }
+    areaSelect.disabled = !chosen || online;
+    areaSelect.value = servicesState.area;
+
+    regionSelect.addEventListener("change", () => {
+      servicesState.region = regionSelect.value;
+      servicesState.area = "";
+      void loadServices();
+    });
+    areaSelect.addEventListener("change", () => {
+      servicesState.area = areaSelect.value;
+      void loadServices();
+    });
+
+    const bar = h("div", "stats-filters users-toolbar");
+    bar.append(filterField("المحافظة", regionSelect), filterField("المنطقة", areaSelect));
+    return bar;
+  }
+
+  // الأسماء الأصلية التي انضمّت إلى المجموعة، للتأكد من سلامة التجميع التلقائي.
+  function serviceNameCell(label, variants) {
+    const cell = h("div", "stats-service-name");
+    cell.appendChild(h("strong", null, label));
+    const list = rows(variants);
+    const differs = list.length > 1 || (list.length === 1 && String(list[0].name) !== String(label));
+    if (differs) {
+      cell.appendChild(h("small", "stats-variants", "تشمل: " + list.map((item) => String(item.name) + " (" + fmt(item.n) + ")").join("، ")));
+    }
+    return cell;
+  }
+
+  function renderServiceSummary(data) {
+    const scope = obj(data.scope);
+    const coverage = obj(data.coverage);
+    const kinds = rows(data.demand).length + n(obj(data.demand_other).groups);
+    const grid = h("div", "stats-kpis");
+    grid.append(
+      kpi("طلبات بهذا النطاق", fmt(scope.requests), n(coverage.requests_unnamed) > 0 ? fmt(coverage.requests_unnamed) + " منها بلا اسم خدمة (لم يكتمل تحليلها)" : null),
+      kpi("خدمات مختلفة مطلوبة", fmt(kinds), "بعد دمج الأسماء المتشابهة"),
+      kpi("مقدمو خدمة بهذا النطاق", fmt(scope.providers), fmt(scope.services) + " خدمة مقدَّمة")
+    );
+    return grid;
+  }
+
+  function renderServiceDemand(data) {
+    const demand = rows(data.demand);
+    const named = n(obj(data.scope).requests_named);
+    const box = h("div", "stats-subsection");
+    box.appendChild(h("h3", "stats-subtitle", "الأكثر طلباً"));
+    box.appendChild(h("p", "stats-help", "مرتّبة حسب عدد الطلبات الفعلي. «اتفقوا» = طلبات مكتملة أو باتفاق قائم."));
+    if (demand.length === 0) {
+      box.appendChild(empty("لا توجد طلبات بهذا النطاق في الفترة المختارة."));
+      return box;
+    }
+    const body = demand.map((row) => {
+      const providers = h("div", "stats-providers-cell");
+      providers.appendChild(h("span", null, n(row.providers) === 0 ? "لا أحد" : fmt(row.providers) + " (" + fmt(row.searchable) + " قابل للظهور)"));
+      const flag = supplyBadge(row.requests, row.searchable);
+      if (flag) providers.appendChild(flag);
+      return [
+        serviceNameCell(row.service, row.variants),
+        fmt(row.requests),
+        fmtPct(pct(row.requests, named)),
+        fmtPct(pct(row.agreed, row.requests)) + " (" + fmt(row.agreed) + ")",
+        providers
+      ];
+    });
+    box.appendChild(table(["الخدمة", "الطلبات", "من الإجمالي", "اتفقوا", "مقدمو الخدمة"], body));
+    const other = obj(data.demand_other);
+    if (n(other.groups) > 0) {
+      box.appendChild(h("p", "stats-help", "و" + fmt(other.groups) + " خدمة أخرى (" + fmt(other.requests) + " طلب) لم تُعرض لقلّة طلباتها."));
+    }
+    return box;
+  }
+
+  function renderServiceSupply(data) {
+    const supply = rows(data.supply);
+    const box = h("div", "stats-subsection");
+    box.appendChild(h("h3", "stats-subtitle", "ماذا يقدّم الناس"));
+    box.appendChild(h("p", "stats-help", "الخدمات التي يقدّمها مقدمو الخدمة الفعّالون بهذا النطاق، مع عدد الطلبات عليها."));
+    if (supply.length === 0) {
+      box.appendChild(empty("لا توجد خدمات مقدَّمة بهذا النطاق."));
+      return box;
+    }
+    const body = supply.map((row) => [
+      serviceNameCell(row.service, row.variants),
+      fmt(row.providers),
+      fmt(row.searchable),
+      n(row.requests) === 0 ? badge("لا طلب عليها", "warn") : fmt(row.requests)
+    ]);
+    box.appendChild(table(["الخدمة المعروضة", "مقدمو الخدمة", "قابلون للظهور", "الطلبات عليها"], body));
+    const other = obj(data.supply_other);
+    if (n(other.groups) > 0) {
+      box.appendChild(h("p", "stats-help", "و" + fmt(other.groups) + " خدمة أخرى لم تُعرض."));
+    }
+    return box;
+  }
+
+  function renderAreaCoverage(data) {
+    const coverage = obj(data.coverage);
+    const note = h("div", "stats-note");
+    note.appendChild(h("strong", null, "عن بيانات المنطقة"));
+    note.appendChild(h("p", "stats-help",
+      "المنطقة محددة في " + fmt(coverage.requests_with_area) + " من " + fmt(coverage.requests) + " طلب، وفي " +
+      fmt(coverage.services_with_area) + " من " + fmt(coverage.services) + " خدمة مقدَّمة. الباقي مسجّل بالمحافظة فقط، ويظهر عند اختيار «غير محددة المنطقة». " +
+      "كلما ذكر الزبائن ومقدمو الخدمة منطقتهم بشكل أكثر صارت هذه الفلاتر أدق."));
+    return note;
+  }
+
+  function renderServices(result) {
+    const data = obj(obj(result).services);
+    servicesBox.replaceChildren();
+    servicesBox.appendChild(h("h2", "stats-section-title", "الخدمات"));
+    servicesBox.appendChild(h("p", "stats-help",
+      "ماذا يُطلب وماذا يُعرض بالاسم الفعلي للخدمة. الخدمات المتشابهة (مثل مبرمج / مبرمجة / برمجة تطبيقات) تُجمَّع تلقائياً وقد يخطئ التجميع أحياناً، " +
+      "لذلك تظهر تحت كل خدمة الأسماء الأصلية التي انضمّت إليها."));
+    servicesBox.appendChild(renderServiceFilters(data));
+    if (!data.scope) {
+      servicesBox.appendChild(empty("لا توجد بيانات للخدمات."));
+      return;
+    }
+    servicesBox.append(renderServiceSummary(data), renderServiceDemand(data), renderServiceSupply(data), renderAreaCoverage(data));
+  }
+
+  function renderServicesError(message) {
+    servicesBox.replaceChildren();
+    servicesBox.appendChild(h("h2", "stats-section-title", "الخدمات"));
+    servicesBox.appendChild(h("p", "stats-warn", message + " اضغط «تحديث» للمحاولة مجدداً."));
+  }
+
+  async function loadServices() {
+    const token = ++servicesToken;
+    servicesBox.classList.add("is-loading");
+    try {
+      const { data, error } = await supabaseClient.auth.getSession();
+      if (error || !data.session) throw new Error("انتهت جلسة الدخول. سجّل الدخول مجدداً.");
+      let query = "?days=" + encodeURIComponent(periodSelect.value);
+      if (servicesState.region) query += "&region=" + encodeURIComponent(servicesState.region);
+      if (servicesState.region && servicesState.area) query += "&area=" + encodeURIComponent(servicesState.area);
+      const response = await fetch("/api/stats-services" + query, {
+        headers: { Authorization: "Bearer " + data.session.access_token },
+        cache: "no-store"
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || "تعذّر تحميل إحصائيات الخدمات.");
+      if (token !== servicesToken) return; // وصلت نتيجة أقدم من آخر طلب
+      renderServices(result);
+    } catch (error) {
+      if (token !== servicesToken) return;
+      renderServicesError(error && error.message ? error.message : "تعذّر تحميل إحصائيات الخدمات.");
+    } finally {
+      if (token === servicesToken) servicesBox.classList.remove("is-loading");
+    }
   }
 
   // ------------------------------------------------------------ التحميل
@@ -678,10 +802,12 @@
       const { data, error } = await supabaseClient.auth.getSession();
       if (error || !data.session) throw new Error("انتهت جلسة الدخول. سجّل الدخول مجدداً.");
       const query = "?days=" + encodeURIComponent(periodSelect.value) + "&staleHours=" + encodeURIComponent(staleSelect.value);
-      const response = await fetch("/api/stats" + query, {
+      const mainRequest = fetch("/api/stats" + query, {
         headers: { Authorization: "Bearer " + data.session.access_token },
         cache: "no-store"
       });
+      void loadServices(); // قسم الخدمات يُحمَّل بالتوازي وبشكل مستقل (فلاتره لا تعيد تحميل الصفحة كلها)
+      const response = await mainRequest;
       const result = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(result.error || "تعذّر تحميل الإحصائيات.");
       if (token !== loadToken) return; // وصلت نتيجة أقدم من آخر طلب

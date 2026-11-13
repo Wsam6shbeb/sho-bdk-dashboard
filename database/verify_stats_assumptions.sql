@@ -97,3 +97,14 @@ union all
 select 'service_structured_data_region', coalesce(ps.structured_data->>'region', '(null)'), count(*)
   from public.provider_services ps where ps.is_active group by 2
 order by 1, 3 desc;
+
+-- 13) تدقيق تجميع أسماء الخدمات (بعد تطبيق migration الخدمات): كل اسم أصلي مقابل المجموعة التي انضمّ إليها.
+--     المجموعات التي تبدأ بـ ~ لم تطابق أي قاعدة وتبقى بنفسها. إن رأيت اسمين مختلفين في مجموعة واحدة بالخطأ فأخبر المطوّر لتعديل القاعدة.
+select public.admin_stats_service_group(t.name) as grp, t.name, count(*) as n
+  from (
+    select structured_data->>'service' as name from public.service_requests where structured_data->>'service' is not null
+    union all
+    select coalesce(structured_data->>'service', description) from public.provider_services where is_active
+  ) t
+ group by 1, 2
+ order by 1, 3 desc;

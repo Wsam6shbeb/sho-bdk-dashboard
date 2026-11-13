@@ -92,7 +92,7 @@ test("يعرض صفحة كاملة للمالك دون أخطاء، ويطلب /
   assert.equal(m.fetchCalls[0].init.headers.Authorization, "Bearer tok");
   assert.equal(m.fetchCalls[0].init.cache, "no-store");
   const t = m.text();
-  for (const k of ["نتائج الطلبات", "الخدمات المطلوبة", "الخدمة والمحافظة معاً", "جاهزية مقدمي الخدمة", "أوقات الطلب", "مؤشرات الإدارة", "المالية (للمالك فقط)", "تعريفات", "رضا الزبائن"]) assert.ok(t.includes(k), k);
+  for (const k of ["نتائج الطلبات", "الخدمات", "جاهزية مقدمي الخدمة", "أوقات الطلب", "مؤشرات الإدارة", "المالية (للمالك فقط)", "تعريفات", "رضا الزبائن"]) assert.ok(t.includes(k), k);
   assert.equal(m.status().classList.contains("error"), false);
 });
 
@@ -126,29 +126,6 @@ test("الفئات متبادلة الاستبعاد: مقاطع الدونات 
 test("نسبة الاتفاق = (مكتملة+قائمة) ÷ (الإجمالي − قيد المعالجة) = 20/80 = 25٪", async () => {
   const m = mount(ok(OWNER_PAYLOAD)); m.click(); await m.settle();
   assert.ok(m.text().includes(Number(25).toLocaleString("ar") + "٪"));
-});
-
-test("النص القادم من البيانات يُدرَج كنص فقط (لا عنصر img ولا innerHTML)", async () => {
-  const m = mount(ok(OWNER_PAYLOAD)); m.click(); await m.settle();
-  assert.ok(m.text().includes("<img src=x onerror=alert(1)>"));
-  assert.ok(!m.created.includes("img"));
-});
-
-test("الاتجاه: لا يظهر تغير عند أقل من 5 طلبات بالفترة السابقة", async () => {
-  const m = mount(ok(OWNER_PAYLOAD)); m.click(); await m.settle();
-  const t = m.text();
-  assert.ok(t.includes("▲ " + digits(50) + "٪"), "30 مقابل 20 = +50٪");
-  assert.ok(!t.includes("▲ " + digits(1233) + "٪"), "تعليم 40 مقابل 3 لا يُحسب");
-  assert.ok(t.includes("▼ " + digits(44) + "٪"), "أخرى 5 مقابل 9 = −44٪");
-});
-
-test("جدول الخدمة×المحافظة: يُخفي الخلايا الصغيرة، ولا يقارن المحافظة غير المحددة، ويضع الأعلام الصحيحة", async () => {
-  const m = mount(ok(OWNER_PAYLOAD)); m.click(); await m.settle();
-  const t = m.text();
-  assert.ok(t.includes("أُخفيت " + digits(1) + " خلية أصغر"), "خلية نقل/حمص (2 طلب) مخفية");
-  assert.ok(t.includes("المحافظة غير محددة"));
-  assert.ok(t.includes("لا يوجد مقدم قابل للظهور")); // تصليح وصيانة/اللاذقية: 12 طلباً و0 مقدمين
-  assert.ok(t.includes("عرض محدود")); // تعليم/اللاذقية: 25 طلباً لـ4 مقدمين = 6.25 ≥ 5
 });
 
 test("بيانات فارغة تماماً لا تُسقط الصفحة وتعرض رسائل «لا توجد»", async () => {
@@ -188,7 +165,8 @@ test("سباق الطلبات: نتيجة أقدم تصل متأخرة لا تس
   const a = clone(OWNER_PAYLOAD); a.stats.requests.total = 111;
   const b = clone(OWNER_PAYLOAD); b.stats.requests.total = 222;
   let call = 0;
-  const m = mount(async () => {
+  const m = mount(async (url) => {
+    if (url.startsWith("/api/stats-services")) return { ok: true, json: async () => ({}) };
     call += 1;
     if (call === 1) { await new Promise((r) => setTimeout(r, 40)); return { ok: true, json: async () => a }; }
     return { ok: true, json: async () => b };
@@ -204,7 +182,8 @@ test("تغيير الفترة والمهلة يعيد الطلب بالمعام�
   const m = mount(ok(OWNER_PAYLOAD)); m.click(); await m.settle();
   m.period.value = "0"; m.stale.value = "168";
   m.period.listeners.change.forEach((f) => f()); await m.settle();
-  assert.equal(m.fetchCalls.at(-1).url, "/api/stats?days=0&staleHours=168");
+  assert.equal(m.fetchCalls.filter((c) => c.url.startsWith("/api/stats?")).at(-1).url, "/api/stats?days=0&staleHours=168");
+  assert.equal(m.fetchCalls.filter((c) => c.url.startsWith("/api/stats-services")).at(-1).url, "/api/stats-services?days=0");
 });
 
 test("مصدر السكربت متوافق مع CSP: لا innerHTML ولا style مضمّن ولا eval ولا روابط خارجية", () => {
@@ -223,4 +202,178 @@ test("كل كلاس لون مستعمل في السكربت معرّف في CSS"
   const outcomes = [...SOURCE.matchAll(/key: "([a-z_]+)", group/g)].map((m) => "c-" + m[1]);
   const series = [...SOURCE.matchAll(/cls: "([a-z_]+)"/g)].map((m) => "c-" + m[1]);
   for (const cls of new Set([...used, ...outcomes, ...series])) assert.ok(CSS.includes("." + cls + " "), "غير معرّف في CSS: " + cls);
+});
+
+// ---------------------------------------------------------------- قسم الخدمات
+const SERVICES_PAYLOAD = {
+  role: "owner",
+  services: {
+    meta: { days: 30, region: null, area: null },
+    filters: { regions: [
+      { name: "اللاذقية", n: 44, areas: [{ name: "سقوبين", n: 3 }, { name: "صلنفة", n: 3 }] },
+      { name: "اونلاين", n: 1, areas: [] }
+    ] },
+    coverage: { requests: 40, requests_unnamed: 2, requests_with_area: 6, services: 6, services_with_area: 3 },
+    scope: { requests: 40, requests_named: 38, services: 6, providers: 5 },
+    demand: [
+      { service: "برمجة وتطبيقات", requests: 14, agreed: 4, providers: 2, searchable: 2,
+        variants: [{ name: "مبرمج", n: 5 }, { name: "مبرمجة", n: 4 }, { name: "تطبيقات", n: 2 }, { name: "برمجة تطبيقات", n: 1 }] },
+      { service: "رسم", requests: 10, agreed: 6, providers: 0, searchable: 0, variants: [{ name: "رسم", n: 10 }] },
+      { service: "<img src=x onerror=alert(1)>", requests: 2, agreed: 0, providers: 1, searchable: 1, variants: [{ name: "<b>x</b>", n: 2 }] }
+    ],
+    demand_other: { groups: 3, requests: 4 },
+    supply: [
+      { service: "برمجة وتطبيقات", providers: 2, searchable: 2, services: 2, requests: 14, variants: [{ name: "مبرمج تطبيقات", n: 2 }] },
+      { service: "تدريس رياضيات", providers: 1, searchable: 1, services: 1, requests: 0, variants: [{ name: "مدرس رياضيات", n: 1 }] }
+    ],
+    supply_other: { groups: 0, providers: 0 }
+  }
+};
+const both = (main, services) => async (url) => ({ ok: true, json: async () => (url.startsWith("/api/stats-services") ? services : main) });
+const findNodes = (m, pred) => { const out = []; m.content.walk((n) => { if (pred(n)) out.push(n); }); return out; };
+const selectByLabel = (m, label) => findNodes(m, (n) => n.tagName === "select" && n.attrs["aria-label"] === label)[0];
+const mountServices = async (servicesPayload = SERVICES_PAYLOAD) => {
+  const m = mount(both(OWNER_PAYLOAD, servicesPayload));
+  m.click(); await m.settle();
+  return m;
+};
+
+test("قسم الخدمات يظهر تحت عدادات المستخدمين مباشرة وقبل مؤشرات الطلبات", async () => {
+  const m = await mountServices();
+  const t = m.text();
+  const users = t.indexOf("الزبائن الفعّالون");
+  const services = t.indexOf("الأكثر طلباً");
+  const requests = t.indexOf("إجمالي الطلبات");
+  assert.ok(users >= 0 && services > users && requests > services, JSON.stringify({ users, services, requests }));
+});
+
+test("الأكثر طلباً: الترتيب حسب العدد الفعلي، وأسماء الصيغ المدموجة ظاهرة للمراجعة", async () => {
+  const m = await mountServices();
+  const t = m.text();
+  assert.ok(t.indexOf("برمجة وتطبيقات") < t.indexOf("رسم"), "14 طلباً قبل 10");
+  assert.ok(t.includes("تشمل: مبرمج (" + digits(5) + ")، مبرمجة (" + digits(4) + ")، تطبيقات (" + digits(2) + ")، برمجة تطبيقات (" + digits(1) + ")"));
+  assert.ok(!t.includes("تشمل: رسم"), "اسم واحد بلا دمج لا يُكرَّر");
+  assert.ok(t.includes(digits(14)) && t.includes(digits(10)));
+  assert.ok(t.includes("و" + digits(3) + " خدمة أخرى (" + digits(4) + " طلب)"));
+});
+
+test("إذا طُلبت خدمة أكثر تظهر أولاً حتى لو كانت أقل مجموعات الأسماء", async () => {
+  const p = clone(SERVICES_PAYLOAD);
+  p.services.demand = [
+    { service: "رسم", requests: 30, agreed: 1, providers: 0, searchable: 0, variants: [{ name: "رسم", n: 30 }] },
+    { service: "برمجة وتطبيقات", requests: 14, agreed: 4, providers: 2, searchable: 2, variants: [{ name: "مبرمج", n: 14 }] }
+  ];
+  const m = await mountServices(p);
+  const t = m.text();
+  assert.ok(t.indexOf("رسم") < t.indexOf("برمجة وتطبيقات"));
+});
+
+test("أعلام العرض: «لا يوجد مقدم» لخدمة مطلوبة بلا مقدمين، ولا علم لعينة صغيرة", async () => {
+  const m = await mountServices();
+  const t = m.text();
+  assert.ok(t.includes("لا يوجد مقدم قابل للظهور")); // رسم: 10 طلبات و0 مقدمين
+  assert.equal(t.split("لا يوجد مقدم قابل للظهور").length - 1, 1, "طلبان فقط لا يُعدّان نقصاً");
+});
+
+test("ماذا يقدّم الناس: خدمة معروضة بلا طلب عليها تُوسم", async () => {
+  const m = await mountServices();
+  const t = m.text();
+  assert.ok(t.includes("ماذا يقدّم الناس"));
+  assert.ok(t.includes("تدريس رياضيات"));
+  assert.ok(t.includes("لا طلب عليها"));
+});
+
+test("النص القادم من البيانات (اسم خدمة أو صيغة) يُدرَج كنص فقط (لا عناصر HTML)", async () => {
+  const m = await mountServices();
+  assert.ok(m.text().includes("<img src=x onerror=alert(1)>"));
+  assert.ok(m.text().includes("<b>x</b>"));
+  assert.ok(!m.created.includes("img") && !m.created.includes("b"));
+});
+
+test("الفلاتر: محافظة ثم منطقة، والمنطقة معطّلة قبل اختيار المحافظة", async () => {
+  const m = await mountServices();
+  const region = selectByLabel(m, "المحافظة");
+  const area = selectByLabel(m, "المنطقة");
+  assert.ok(region && area);
+  assert.deepEqual(region.children.map((o) => o.value), ["", "اللاذقية", "اونلاين"]);
+  assert.equal(area.disabled, true);
+  assert.deepEqual(area.children.map((o) => o.value), [""]);
+});
+
+test("اختيار محافظة يعيد تحميل قسم الخدمات فقط بمعاملاتها، ثم المنطقة تضيف area", async () => {
+  const m = await mountServices();
+  const before = m.fetchCalls.filter((c) => c.url.startsWith("/api/stats?")).length;
+  let region = selectByLabel(m, "المحافظة");
+  region.value = "اللاذقية";
+  region.listeners.change.forEach((f) => f());
+  await m.settle();
+  assert.equal(m.fetchCalls.at(-1).url, "/api/stats-services?days=30&region=" + encodeURIComponent("اللاذقية"));
+  assert.equal(m.fetchCalls.filter((c) => c.url.startsWith("/api/stats?")).length, before, "لا يُعاد تحميل الصفحة كلها");
+
+  // بعد إعادة البناء: المنطقة مفعّلة وفيها «غير محددة» والمناطق الموجودة بالبيانات
+  region = selectByLabel(m, "المحافظة");
+  let area = selectByLabel(m, "المنطقة");
+  assert.equal(region.value, "اللاذقية");
+  assert.equal(area.disabled, false);
+  assert.deepEqual(area.children.map((o) => o.value), ["", "__none__", "سقوبين", "صلنفة"]);
+  area.value = "سقوبين";
+  area.listeners.change.forEach((f) => f());
+  await m.settle();
+  assert.equal(m.fetchCalls.at(-1).url, "/api/stats-services?days=30&region=" + encodeURIComponent("اللاذقية") + "&area=" + encodeURIComponent("سقوبين"));
+});
+
+test("تغيير المحافظة يصفّر المنطقة، و«اونلاين» لا مناطق لها", async () => {
+  const m = await mountServices();
+  let region = selectByLabel(m, "المحافظة");
+  region.value = "اللاذقية"; region.listeners.change.forEach((f) => f()); await m.settle();
+  let area = selectByLabel(m, "المنطقة");
+  area.value = "__none__"; area.listeners.change.forEach((f) => f()); await m.settle();
+  assert.ok(m.fetchCalls.at(-1).url.endsWith("&area=__none__"));
+  region = selectByLabel(m, "المحافظة");
+  region.value = "اونلاين"; region.listeners.change.forEach((f) => f()); await m.settle();
+  assert.equal(m.fetchCalls.at(-1).url, "/api/stats-services?days=30&region=" + encodeURIComponent("اونلاين"));
+  assert.equal(selectByLabel(m, "المنطقة").disabled, true);
+});
+
+test("تغيير الفترة يحتفظ بالفلاتر المختارة", async () => {
+  const m = await mountServices();
+  const region = selectByLabel(m, "المحافظة");
+  region.value = "اللاذقية"; region.listeners.change.forEach((f) => f()); await m.settle();
+  m.period.value = "7"; m.period.listeners.change.forEach((f) => f()); await m.settle();
+  const last = m.fetchCalls.filter((c) => c.url.startsWith("/api/stats-services")).at(-1).url;
+  assert.equal(last, "/api/stats-services?days=7&region=" + encodeURIComponent("اللاذقية"));
+});
+
+test("تغطية المنطقة تُعرض بأرقامها الفعلية (المتوفر فقط)", async () => {
+  const m = await mountServices();
+  const t = m.text();
+  assert.ok(t.includes("المنطقة محددة في " + digits(6) + " من " + digits(40) + " طلب، وفي " + digits(3) + " من " + digits(6) + " خدمة مقدَّمة"));
+  assert.ok(t.includes(digits(2) + " منها بلا اسم خدمة"));
+});
+
+test("فشل طلب الخدمات لا يُسقط باقي الصفحة ويعرض رسالة عامة", async () => {
+  const m = mount(async (url) => url.startsWith("/api/stats-services")
+    ? { ok: false, json: async () => ({ error: "تعذّر حساب إحصائيات الخدمات حالياً. حاول مجدداً لاحقاً." }) }
+    : { ok: true, json: async () => OWNER_PAYLOAD });
+  m.click(); await m.settle();
+  const t = m.text();
+  assert.ok(t.includes("تعذّر حساب إحصائيات الخدمات حالياً"));
+  assert.ok(t.includes("نتائج الطلبات"), "باقي الصفحة سليم");
+  assert.equal(m.status().classList.contains("error"), false);
+});
+
+test("رد خدمات مشوّه لا يُسقط الصفحة", async () => {
+  for (const payload of [{}, { services: {} }, { services: { scope: {}, demand: "bad", supply: [null, 5], filters: { regions: [null, { name: "اللاذقية", areas: "x" }] } } }]) {
+    const m = await mountServices(payload);
+    assert.ok(m.text().length > 0);
+  }
+});
+
+test("بلا أشرطة تمرير: عمود واحد وجداول تلتف نصوصها", () => {
+  assert.ok(!/overflow-x\s*:\s*(auto|scroll)/.test(CSS), "لا overflow-x:auto/scroll");
+  assert.match(CSS, /\.stats-grid\s*\{[^}]*grid-template-columns:\s*1fr\s*;/);
+  assert.match(CSS, /\.users-table\.stats-table\s*\{[^}]*min-width:\s*0/);
+  assert.match(CSS, /\.users-table\.stats-table th,\s*\.users-table\.stats-table td\s*\{[^}]*white-space:\s*normal/);
+  assert.match(CSS, /\.stats-table-wrap\s*\{[^}]*overflow:\s*visible/);
+  assert.ok(!SOURCE.includes("users-table-wrap"), "لا نستعمل غلاف التمرير القديم");
 });
