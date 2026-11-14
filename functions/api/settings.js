@@ -214,27 +214,38 @@ export async function onRequest({ request, env }) {
         "app_update_message",
         "app_update_url"
       ]);
-      for (const [key, value] of Object.entries(normalizedSettings)) {
-        const shouldUpsert = upsertKeys.has(key);
+      const regularEntries = Object.entries(normalizedSettings).filter(([key]) => !upsertKeys.has(key));
+      for (const [key, value] of regularEntries) {
         const response = await supabaseRequest(
           env,
-          shouldUpsert
-            ? "/rest/v1/app_settings?on_conflict=key"
-            : "/rest/v1/app_settings?key=eq." + encodeURIComponent(key),
+          "/rest/v1/app_settings?key=eq." + encodeURIComponent(key),
           {
-            method: shouldUpsert ? "POST" : "PATCH",
-            headers: {
-              Prefer: shouldUpsert
-                ? "resolution=merge-duplicates,return=representation"
-                : "return=representation"
-            },
-            body: JSON.stringify(shouldUpsert ? { key, value } : { value })
+            method: "PATCH",
+            headers: { Prefer: "return=representation" },
+            body: JSON.stringify({ value })
           }
         );
         if (!response.ok) return json({ error: "تعذّر حفظ الإعداد «" + key + "». قد تكون بعض القيم السابقة قد حُفظت؛ أعد تحميل الإعدادات للتحقق." }, 502);
         const updated = await response.json();
         if (!Array.isArray(updated) || updated.length !== 1) {
           return json({ error: "لم يتم تأكيد حفظ الإعداد «" + key + "». أعد تحميل الإعدادات للتحقق." }, 500);
+        }
+      }
+
+      const updateEntries = Object.entries(normalizedSettings).filter(([key]) => upsertKeys.has(key));
+      if (updateEntries.length) {
+        const response = await supabaseRequest(env, "/rest/v1/app_settings?on_conflict=key", {
+          method: "POST",
+          headers: { Prefer: "resolution=merge-duplicates,return=representation" },
+          body: JSON.stringify(updateEntries.map(([key, value]) => ({ key, value })))
+        });
+        const updated = response.ok ? await response.json() : [];
+        const updatedByKey = Object.fromEntries(
+          Array.isArray(updated) ? updated.map((row) => [row.key, row.value]) : []
+        );
+        if (!response.ok || !Array.isArray(updated) || updated.length !== updateEntries.length ||
+            !updateEntries.every(([key, value]) => updatedByKey[key] === value)) {
+          return json({ error: "تعذّر تأكيد حفظ إعدادات التحديث. أعد تحميل الإعدادات للتحقق." }, 502);
         }
       }
 
