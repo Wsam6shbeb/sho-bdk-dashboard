@@ -48,7 +48,12 @@ const appSettingsInputs = {
   notification_retention_days: document.getElementById("setting-notification-days"),
   rating_window_hours: document.getElementById("setting-rating-hours"),
   signup_bonus_amount: document.getElementById("setting-signup-bonus"),
-  test_topup_enabled: document.getElementById("setting-test-topup")
+  test_topup_enabled: document.getElementById("setting-test-topup"),
+  app_update_enabled: document.getElementById("setting-app-update-enabled"),
+  app_latest_version: document.getElementById("setting-app-latest-version"),
+  app_min_supported_version: document.getElementById("setting-app-min-version"),
+  app_update_message: document.getElementById("setting-app-update-message"),
+  app_update_url: document.getElementById("setting-app-update-url")
 };
 const supabaseClient = window.supabase?.createClient(
   window.SHO_BDK_CONFIG.supabaseUrl,
@@ -80,14 +85,23 @@ document.querySelectorAll(".nav-item").forEach((button) => {
 
 function loadAppSettings(settings) {
   const values = settings && typeof settings === "object" ? settings : {};
+  const defaults = {
+    app_update_enabled: false,
+    app_latest_version: "1.0.0",
+    app_min_supported_version: "1.0.0",
+    app_update_message: "يتوفر إصدار أحدث من تطبيق شو بدك. حدّث التطبيق للاستفادة من التحسينات.",
+    app_update_url: "https://sho-bdk-download.vercel.app/"
+  };
   let complete = true;
   Object.entries(appSettingsInputs).forEach(([key, input]) => {
-    const value = values[key];
+    const value = values[key] ?? defaults[key];
     if (value === null || value === undefined) {
       input.value = "";
       complete = false;
     } else {
-      input.value = key === "test_topup_enabled" ? String(Boolean(value)) : String(value);
+      input.value = key === "test_topup_enabled" || key === "app_update_enabled"
+        ? String(Boolean(value))
+        : String(value);
     }
   });
   saveAppSettingsButton.disabled = !complete;
@@ -106,7 +120,12 @@ function readAppSettingsForm() {
     notification_retention_days: Number(appSettingsInputs.notification_retention_days.value),
     rating_window_hours: Number(appSettingsInputs.rating_window_hours.value),
     signup_bonus_amount: Number(appSettingsInputs.signup_bonus_amount.value),
-    test_topup_enabled: appSettingsInputs.test_topup_enabled.value === "true"
+    test_topup_enabled: appSettingsInputs.test_topup_enabled.value === "true",
+    app_update_enabled: appSettingsInputs.app_update_enabled.value === "true",
+    app_latest_version: appSettingsInputs.app_latest_version.value.trim(),
+    app_min_supported_version: appSettingsInputs.app_min_supported_version.value.trim(),
+    app_update_message: appSettingsInputs.app_update_message.value.trim(),
+    app_update_url: appSettingsInputs.app_update_url.value.trim()
   };
 }
 
