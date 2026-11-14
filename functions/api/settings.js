@@ -176,8 +176,8 @@ export async function onRequest({ request, env }) {
         signup_bonus_amount: (value) => Number.isInteger(value) && value >= 0 && value <= 1000000,
         test_topup_enabled: (value) => typeof value === "boolean",
         app_update_enabled: (value) => typeof value === "boolean",
-        app_latest_version: (value) => typeof value === "string" && /^\\d+\\.\\d+\\.\\d+$/.test(value),
-        app_min_supported_version: (value) => typeof value === "string" && /^\\d+\\.\\d+\\.\\d+$/.test(value),
+        app_latest_version: (value) => typeof value === "string" && /^\d+\.\d+\.\d+$/.test(value),
+        app_min_supported_version: (value) => typeof value === "string" && /^\d+\.\d+\.\d+$/.test(value),
         app_update_message: (value) => typeof value === "string" && value.trim().length >= 1 && value.trim().length <= 240,
         app_update_url: (value) => {
           try {
