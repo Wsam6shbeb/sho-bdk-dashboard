@@ -374,6 +374,37 @@
               </select>
               <small>اتركه معطّلاً للاستخدام الفعلي ما لم تكن تختبر ميزة الشحن.</small>
             </div>
+            <div class="setting-field" style="grid-column:1/-1">
+              <h3>تنبيه تحديث التطبيق</h3>
+              <small>يمكنك إظهار تنبيه اختياري أو فرض التحديث على الإصدارات القديمة، مع فتح صفحة التنزيل الرسمية.</small>
+            </div>
+            <div class="setting-field setting-toggle">
+              <label for="setting-app-update-enabled">تفعيل تنبيه التحديث</label>
+              <select id="setting-app-update-enabled" required>
+                <option value="false">معطّل</option>
+                <option value="true">مفعّل</option>
+              </select>
+              <small>عند التفعيل، يفحص التطبيق وجود إصدار أحدث عند فتحه أو العودة إليه.</small>
+            </div>
+            <div class="setting-field">
+              <label for="setting-app-latest-version">أحدث إصدار متاح</label>
+              <input id="setting-app-latest-version" type="text" inputmode="numeric" pattern="[0-9]+\.[0-9]+\.[0-9]+" maxlength="20" required>
+              <small>مثال: 1.0.1</small>
+            </div>
+            <div class="setting-field">
+              <label for="setting-app-min-version">أقل إصدار مسموح</label>
+              <input id="setting-app-min-version" type="text" inputmode="numeric" pattern="[0-9]+\.[0-9]+\.[0-9]+" maxlength="20" required>
+              <small>إذا كان أقل من أحدث إصدار، يكون التنبيه اختيارياً. إذا ساواه، يصبح التحديث إلزامياً للإصدارات الأقدم.</small>
+            </div>
+            <div class="setting-field">
+              <label for="setting-app-update-message">رسالة التحديث</label>
+              <input id="setting-app-update-message" type="text" maxlength="240" required>
+            </div>
+            <div class="setting-field">
+              <label for="setting-app-update-url">رابط صفحة تنزيل التطبيق</label>
+              <input id="setting-app-update-url" type="url" maxlength="500" required>
+              <small>يجب أن يبدأ الرابط بـ https://</small>
+            </div>
           </div>
           <p id="app-settings-status" class="helper" role="status">جارٍ تحميل الإعدادات…</p>
           <button id="save-app-settings" class="primary-button" type="submit">حفظ إعدادات التطبيق</button>
