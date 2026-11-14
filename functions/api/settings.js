@@ -34,7 +34,12 @@ export async function onRequest({ request, env }) {
         "signup_bonus_amount",
         "test_topup_enabled",
         "home_tips",
-        "home_tips_interval_seconds"
+        "home_tips_interval_seconds",
+        "app_update_enabled",
+        "app_latest_version",
+        "app_min_supported_version",
+        "app_update_message",
+        "app_update_url"
       ];
       const allKeys = keys + ",support_email,support_phone,dashboard_require_mfa," + appKeys.join(",");
       const response = await supabaseRequest(
@@ -73,7 +78,12 @@ export async function onRequest({ request, env }) {
           "signup_bonus_amount",
           "test_topup_enabled",
           "home_tips",
-          "home_tips_interval_seconds"
+          "home_tips_interval_seconds",
+          "app_update_enabled",
+          "app_latest_version",
+          "app_min_supported_version",
+          "app_update_message",
+          "app_update_url"
         ].map((key) => [key, rawValues[key] ?? null]))
       });
     }
@@ -164,22 +174,61 @@ export async function onRequest({ request, env }) {
         notification_retention_days: (value) => Number.isInteger(value) && value >= 1 && value <= 365,
         rating_window_hours: (value) => Number.isInteger(value) && value >= 1 && value <= 720,
         signup_bonus_amount: (value) => Number.isInteger(value) && value >= 0 && value <= 1000000,
-        test_topup_enabled: (value) => typeof value === "boolean"
+        test_topup_enabled: (value) => typeof value === "boolean",
+        app_update_enabled: (value) => typeof value === "boolean",
+        app_latest_version: (value) => typeof value === "string" && /^\\d+\\.\\d+\\.\\d+$/.test(value),
+        app_min_supported_version: (value) => typeof value === "string" && /^\\d+\\.\\d+\\.\\d+$/.test(value),
+        app_update_message: (value) => typeof value === "string" && value.trim().length >= 1 && value.trim().length <= 240,
+        app_update_url: (value) => {
+          try {
+            return typeof value === "string" && new URL(value).protocol === "https:";
+          } catch {
+            return false;
+          }
+        }
       };
       const entries = Object.entries(settings);
       if (!entries.length || entries.some(([key, value]) => !rules[key] || !rules[key](value))) {
         return json({ error: "توجد قيمة غير صالحة. راجع الحقول وحدودها قبل الحفظ." }, 400);
       }
+      if (settings.app_latest_version && settings.app_min_supported_version) {
+        const latest = settings.app_latest_version.split(".").map(Number);
+        const minimum = settings.app_min_supported_version.split(".").map(Number);
+        const minimumIsNewer = minimum.some((part, index) =>
+          part > latest[index] && minimum.slice(0, index).every((value, prior) => value === latest[prior])
+        );
+        if (minimumIsNewer) {
+          return json({ error: "أقل إصدار مسموح لا يمكن أن يكون أحدث من أحدث إصدار متاح." }, 400);
+        }
+      }
 
       const appBefore = await readSettings(env, entries.map(([key]) => key));
-      for (const [key, value] of entries) {
+      const normalizedSettings = Object.fromEntries(entries.map(([key, value]) => [
+        key,
+        typeof value === "string" ? value.trim() : value
+      ]));
+      const upsertKeys = new Set([
+        "app_update_enabled",
+        "app_latest_version",
+        "app_min_supported_version",
+        "app_update_message",
+        "app_update_url"
+      ]);
+      for (const [key, value] of Object.entries(normalizedSettings)) {
+        const shouldUpsert = upsertKeys.has(key);
         const response = await supabaseRequest(
           env,
-          "/rest/v1/app_settings?key=eq." + encodeURIComponent(key),
+          shouldUpsert
+            ? "/rest/v1/app_settings?on_conflict=key"
+            : "/rest/v1/app_settings?key=eq." + encodeURIComponent(key),
           {
-            method: "PATCH",
-            headers: { Prefer: "return=representation" },
-            body: JSON.stringify({ value: key === "launch_region" ? value.trim() : value })
+            method: shouldUpsert ? "POST" : "PATCH",
+            headers: {
+              Prefer: shouldUpsert
+                ? "resolution=merge-duplicates,return=representation"
+                : "return=representation"
+            },
+            body: JSON.stringify(shouldUpsert ? { key, value } : { value })
           }
         );
         if (!response.ok) return json({ error: "تعذّر حفظ الإعداد «" + key + "». قد تكون بعض القيم السابقة قد حُفظت؛ أعد تحميل الإعدادات للتحقق." }, 502);
@@ -191,7 +240,7 @@ export async function onRequest({ request, env }) {
 
       await audit(env, auth.user.id, "admin_update_settings", "app_settings", null, {
         section: "app-settings",
-        changes: changes(appBefore, Object.fromEntries(entries.map(([key, value]) => [key, key === "launch_region" ? value.trim() : value])))
+        changes: changes(appBefore, normalizedSettings)
       });
       return json({ success: true, settings });
     }
