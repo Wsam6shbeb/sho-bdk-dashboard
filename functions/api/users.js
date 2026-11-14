@@ -103,7 +103,7 @@ export function buildUserFilter(query, filter) {
     const clauses = [];
     if (!mostlyDigits) {
       const encoded = encodeURIComponent(text);
-      clauses.push("full_name.ilike.*" + encoded + "*", "region.ilike.*" + encoded + "*");
+      clauses.push("display_name.ilike.*" + encoded + "*", "full_name.ilike.*" + encoded + "*", "region.ilike.*" + encoded + "*");
     }
     if (digits.length >= 3 && needle.length >= 3) clauses.push("phone.ilike.*" + needle + "*");
     if (clauses.length > 0) ors.push("or(" + clauses.join(",") + ")");
