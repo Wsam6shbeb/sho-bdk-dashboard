@@ -494,7 +494,7 @@ async function searchTopupCode() {
     title.textContent = "بيانات المستخدم";
     const details = document.createElement("p");
     details.className = "muted";
-    details.textContent = "الاسم: " + (user.full_name || "غير مضاف") + " · الهاتف: " + (user.phone || "—") + " · رمز الشحن: " + user.topup_code;
+    details.textContent = "الاسم: " + (user.display_name || user.full_name || "غير مضاف") + " · الهاتف: " + (user.phone || "—") + " · رمز الشحن: " + user.topup_code;
     summary.append(title, details);
     resultPanel.appendChild(summary);
     const topupCard = createWalletTopupCard(user);
@@ -557,7 +557,7 @@ function renderUsers() {
     const row = document.createElement("tr");
     const nameCell = document.createElement("td");
     const name = document.createElement("strong");
-    name.textContent = user.full_name || "اسم غير مضاف";
+    name.textContent = user.display_name || user.full_name || "اسم غير مضاف";
     nameCell.appendChild(name);
 
     const phoneCell = document.createElement("td");
@@ -626,7 +626,7 @@ function renderUsers() {
 
 async function updateUserStatus(user, button) {
   const nextStatus = isUserActive(user) ? "suspended" : "active";
-  if (!window.confirm("تأكيد تغيير حالة حساب " + (user.full_name || "المستخدم") + "؟")) return;
+  if (!window.confirm("تأكيد تغيير حالة حساب " + (user.display_name || user.full_name || "المستخدم") + "؟")) return;
   button.disabled = true;
   try {
     const { data, error } = await supabaseClient.auth.getSession();
@@ -651,7 +651,7 @@ async function updateUserStatus(user, button) {
 }
 
 async function deleteUserAccount(user, button) {
-  const name = user.full_name || "المستخدم";
+  const name = user.display_name || user.full_name || "المستخدم";
   const confirmed = window.confirm(
     "هل تريد حذف حساب " + name + "؟\n\n" +
     "سيتم تعطيل تسجيل الدخول وإخفاء البيانات الشخصية. ستبقى سجلات التوثيق والمعاملات والتقييمات اللازمة للسلامة والمحاسبة. لا يمكن التراجع عن هذا الإجراء."
@@ -836,7 +836,7 @@ function createWalletTopupCard(user) {
       status.classList.add("error");
       return;
     }
-    if (!window.confirm("تأكيد إضافة " + amount.toLocaleString("ar") + " ل.س إلى رصيد " + (user.full_name || "هذا المستخدم") + "؟")) return;
+    if (!window.confirm("تأكيد إضافة " + amount.toLocaleString("ar") + " ل.س إلى رصيد " + (user.display_name || user.full_name || "هذا المستخدم") + "؟")) return;
     submit.disabled = true;
     status.classList.remove("error", "success");
     status.textContent = "جارٍ تنفيذ الإضافة وتسجيلها…";
@@ -876,7 +876,7 @@ function createWalletTopupCard(user) {
 
 function showUserDetails(user) {
   const rows = [
-    ["الاسم", user.full_name || "اسم غير مضاف"],
+    ["الاسم", user.display_name || user.full_name || "اسم غير مضاف"],
     ["رقم الهاتف", user.phone || "—"],
     ["رمز الشحن", user.topup_code || "—"],
     ["المنطقة", user.region || "—"],

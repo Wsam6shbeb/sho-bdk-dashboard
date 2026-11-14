@@ -103,7 +103,7 @@ export function buildUserFilter(query, filter) {
     const clauses = [];
     if (!mostlyDigits) {
       const encoded = encodeURIComponent(text);
-      clauses.push("full_name.ilike.*" + encoded + "*", "region.ilike.*" + encoded + "*");
+      clauses.push("display_name.ilike.*" + encoded + "*", "full_name.ilike.*" + encoded + "*", "region.ilike.*" + encoded + "*");
     }
     if (digits.length >= 3 && needle.length >= 3) clauses.push("phone.ilike.*" + needle + "*");
     if (clauses.length > 0) ors.push("or(" + clauses.join(",") + ")");
@@ -342,7 +342,7 @@ export async function onRequest({ request, env }) {
       filter = buildUserFilter(rawQuery, filterParam);
     }
 
-    const select = "id,full_name,phone,topup_code,region,is_provider,is_admin,verification_status,status,created_at,deleted_at,rating_avg,rating_count";
+    const select = "id,full_name,display_name,phone,topup_code,region,is_provider,is_admin,verification_status,status,created_at,deleted_at,rating_avg,rating_count";
     const usersResponse = await supabaseRequest(
       env,
       "/rest/v1/users?select=" + select + filter +
