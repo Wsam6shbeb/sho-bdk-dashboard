@@ -194,9 +194,9 @@ export async function onRequest({ request, env }) {
       if (settings.app_latest_version && settings.app_min_supported_version) {
         const latest = settings.app_latest_version.split(".").map(Number);
         const minimum = settings.app_min_supported_version.split(".").map(Number);
-        const minimumIsNewer = minimum.some((part, index) =>
-          part > latest[index] && minimum.slice(0, index).every((value, prior) => value === latest[prior])
-        );
+        const firstDifferentPart = minimum.findIndex((part, index) => part !== latest[index]);
+        const minimumIsNewer =
+          firstDifferentPart !== -1 && minimum[firstDifferentPart] > latest[firstDifferentPart];
         if (minimumIsNewer) {
           return json({ error: "أقل إصدار مسموح لا يمكن أن يكون أحدث من أحدث إصدار متاح." }, 400);
         }
